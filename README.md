@@ -9,7 +9,7 @@
 
 | Feature / Claim            | Zoom                                                       | 🚀 SafeRoom_V2                                               |
 |---------------------------|-------------------------------------------------------------|--------------------------------------------------------------|
-| **"End-to-End Encryption"**| Decrypted on server for routing purposes                   | True E2EE – AES keys are exchanged via RSA and kept in RAM  |
+| **"End-to-End Encryption"**| Decrypted on server for routing purposes                   | True E2EE — Keys derived on-device via X25519+HKDF (never transmitted). Server never decrypts. FS-enabled |
 | **Performance**            | CPU-heavy during meetings, especially on weak systems       | RAM-based, optimized encryption and compression pipeline     |
 | **Data Persistence**       | May store metadata, relays through cloud infrastructure      | Ephemeral by design — no disk logs, no database footprints   |
 | **Security Philosophy**    | Centralized — Trust the server                              | Decentralized — Trust the protocol, not the infrastructure   |
