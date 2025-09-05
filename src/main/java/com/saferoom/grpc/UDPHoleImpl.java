@@ -51,7 +51,7 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 
 			DBManager.updateLoginAttempts(username);
 
-			if(!DBManager.isUserBlocked(username)){
+			if(DBManager.isUserBlocked(username)){
 				
 				if(DBManager.verifyPassword(username, hash_password)){
 					Status stat = Status.newBuilder()
