@@ -10,12 +10,14 @@ import com.saferoom.log.Logger;
 
 public class EmailSender {
 
-    private static final String CONFIG_FILE = "src/main/resources/emailconfig.properties";
-    private static final String ICON_RESOURCE_NAME = "Verificate.png";
-    private static String HOST;
-    private static String PORT;
-    private static String USERNAME;
-    private static String PASSWORD;
+    public static final String CONFIG_FILE = "src/main/resources/emailconfig.properties";
+    public static final String ICON_RESOURCE_NAME = "Verificate.png";
+    public static String HOST;
+    public static String PORT;
+    public static String USERNAME;
+    public static String PASSWORD;
+
+    
 
     public static Logger LOGGER = Logger.getLogger(EmailSender.class);
 
