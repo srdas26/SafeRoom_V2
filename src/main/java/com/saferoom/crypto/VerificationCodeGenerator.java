@@ -7,7 +7,7 @@ public class VerificationCodeGenerator {
     public static String generateVerificationCode() {
         Random random = new Random();
         StringBuilder sb = new StringBuilder();
-        int length = 8; 
+        int length = 6; 
 
         while (sb.length() < length) {
             if (random.nextBoolean()) {

@@ -146,4 +146,120 @@ public class EmailSender {
                 + "Regards,\nSafeRoom Security Team";
         sendEmail(userEmail, subject, message);
     }
+
+    public static boolean sendVerificationEmail(String toEmail, String username, String verificationCode) throws Exception {
+        String subject = "🔐 Verify Your SafeRoom Account";
+        
+        String htmlBody = """
+                <div style='min-height:100vh; background: radial-gradient(ellipse at 70% 30%, #2b2d42 0%, #1a1a2e 100%), url(https://www.transparenttextures.com/patterns/stardust.png); padding: 0; margin: 0;'>
+                    <div style='max-width: 500px; margin: 48px auto; background: rgba(30,34,60,0.85); border-radius: 18px; box-shadow: 0 8px 32px #0008, 0 1.5px 8px #00f2ff44; padding: 40px 28px; border: 1.5px solid #00f2ff33; backdrop-filter: blur(4px);'>
+                        <div style='text-align:center; margin-bottom: 28px;'>
+                            <img src='cid:verificateimg' alt='SafeRoom' style='width:72px; height:72px; border-radius:12px; box-shadow:0 0 16px #00f2ff88; background:#111;'/>
+                        </div>
+                        <h2 style='color:#00f2ff; margin-bottom:18px; font-family: "Orbitron", Arial, sans-serif; letter-spacing:1px; text-shadow:0 2px 8px #00f2ff44; text-align:center;'>🔐 Account Verification</h2>
+                        
+                        <div style='color:#e0e6f7; font-size:17px; line-height:1.7; text-shadow:0 1px 4px #0006;'>
+                            <p>Hello <strong style='color:#00f2ff;'>""" + username + """
+                            </strong>,</p>
+                            
+                            <p>Welcome to <strong style='color:#00f2ff;'>SafeRoom</strong>! 🚀</p>
+                            
+                            <p>To complete your account registration, please verify your email address using the verification code below:</p>
+                            
+                            <div style='background: rgba(0,242,255,0.1); border: 2px solid #00f2ff; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;'>
+                                <p style='margin: 0; color: #fff; font-size: 14px; margin-bottom: 8px;'>Your Verification Code:</p>
+                                <p style='margin: 0; color: #00f2ff; font-size: 32px; font-weight: bold; letter-spacing: 4px; font-family: "Courier New", monospace; text-shadow: 0 0 12px #00f2ff44;'>""" + verificationCode + """
+                                </p>
+                            </div>
+                            
+                            <p style='color: #ffcc00;'>⚠️ <strong>Important:</strong></p>
+                            <ul style='color: #e0e6f7; padding-left: 20px;'>
+                                <li>This code will expire in <strong>10 minutes</strong></li>
+                                <li>Do not share this code with anyone</li>
+                                <li>If you didn't create this account, please ignore this email</li>
+                            </ul>
+                            
+                            <p>Thank you for choosing SafeRoom for your secure communication needs! 💪</p>
+                        </div>
+                        
+                        <div style='margin-top:36px; text-align:center; color:#00f2ffcc; font-size:14px; letter-spacing:1px; text-shadow:0 1px 8px #00f2ff44;'>
+                            SafeRoom Security Team<br>
+                            <span style='font-size:11px; color:#fff8; text-shadow:none;'>🌟 Exploring Security in the Universe 🌟</span>
+                        </div>
+                    </div>
+                </div>
+        """;
+
+        return sendEmailWithHtml(toEmail, subject, htmlBody);
+    }
+
+    private static boolean sendEmailWithHtml(String toEmail, String subject, String htmlBody) throws Exception {
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", HOST);
+        props.put("mail.smtp.port", PORT);
+
+        Session session = Session.getInstance(props, new Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(USERNAME, PASSWORD);
+            }
+        });
+
+        try {
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(USERNAME));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject(subject);
+
+            Multipart multipart = new MimeMultipart("alternative");
+
+            // Text version (fallback)
+            MimeBodyPart textPart = new MimeBodyPart();
+            textPart.setText("Please verify your SafeRoom account. If you cannot see the HTML version, please contact support.");
+            multipart.addBodyPart(textPart);
+
+            // HTML version
+            MimeBodyPart htmlPart = new MimeBodyPart();
+            htmlPart.setContent(htmlBody, "text/html; charset=utf-8");
+
+            // Add image
+            InputStream imageStream = EmailSender.class.getClassLoader().getResourceAsStream(ICON_RESOURCE_NAME);
+            if (imageStream != null) {
+                File tempFile = File.createTempFile("verificate", ".png");
+                try (OutputStream os = new FileOutputStream(tempFile)) {
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
+                    while ((bytesRead = imageStream.read(buffer)) != -1) {
+                        os.write(buffer, 0, bytesRead);
+                    }
+                }
+
+                MimeBodyPart imagePart = new MimeBodyPart();
+                imagePart.attachFile(tempFile);
+                imagePart.setContentID("<verificateimg>");
+                imagePart.setDisposition(MimeBodyPart.INLINE);
+
+                MimeMultipart relatedMultipart = new MimeMultipart("related");
+                relatedMultipart.addBodyPart(htmlPart);
+                relatedMultipart.addBodyPart(imagePart);
+
+                MimeBodyPart relatedBodyPart = new MimeBodyPart();
+                relatedBodyPart.setContent(relatedMultipart);
+                multipart.addBodyPart(relatedBodyPart);
+            } else {
+                multipart.addBodyPart(htmlPart);
+                LOGGER.warn("Verificate.png bulunamadı, ikon eklenmedi.");
+            }
+
+            message.setContent(multipart);
+            Transport.send(message);
+            LOGGER.info("Verification email sent successfully to: " + toEmail);
+            return true;
+
+        } catch (MessagingException | IOException e) {
+            LOGGER.error("Verification email sending failed: " + e.getMessage());
+            throw new RuntimeException("Verification email sending failed: " + e.getMessage(), e);
+        }
+    }
 }

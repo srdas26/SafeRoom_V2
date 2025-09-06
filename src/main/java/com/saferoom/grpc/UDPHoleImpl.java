@@ -35,11 +35,7 @@ import io.grpc.stub.StreamObserver;
 
 public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 	
-	private static final String ICON_PATH = "src/resources/Verificate.png";
-	static String Subject = "Verify Your Account!";
-	static String Body = "Hello,I believe this is belong to you! -->";
-	static String verCode = VerificationCodeGenerator.generateVerificationCode();
-	static String fullCode = Body + verCode;
+	// Static alanları kaldırıyoruz çünkü her kullanıcı için farklı kod olmalı
 	
 	@Override
 	public void menuAns(Menu request, StreamObserver<Status> response){
@@ -96,8 +92,7 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 		String username = request.getUsername();
 		String email =  request.getEmail();
 		String password = request.getPassword();
-		String verification_code = request.getVerificationCode();
-		boolean is_verified = request.getIsVerified();
+		// verification_code ve is_verified kullanılmıyor, kaldırıldı
 	
 		boolean is_mail_valid = true;
 		try {
@@ -113,9 +108,13 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 			try {
 				if(DBManager.createUser(username, password, email))
 				{
-					DBManager.setVerificationCode(username, verCode);
-					if(EmailSender.sendEmail(email, Subject, fullCode, ICON_PATH)) {
-					System.out.println("Successfully Registered!");
+					// Her kullanıcı için yeni verification code üret
+					String verificationCode = VerificationCodeGenerator.generateVerificationCode();
+					DBManager.setVerificationCode(username, verificationCode);
+					
+					// Yeni HTML template ile email gönder
+					if(EmailSender.sendVerificationEmail(email, username, verificationCode)) {
+						System.out.println("Successfully Registered and verification email sent!");
 					}
 					Status stat = Status.newBuilder()
 						.setMessage("SUCCESS")
@@ -124,9 +123,9 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 					response.onNext(stat);	
 				}
 				else{
-					System.out.println("VUSERNAME");
+					System.out.println("Username already exists");
 					Status not_valid = Status.newBuilder()
-						.setMessage("INVALID_USERNAME")
+						.setMessage("VUSERNAME")
 						.setCode(2)
 						.build();
 					response.onNext(not_valid);
@@ -347,8 +346,7 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 
 	@Override
 	public void sendEncryptedMessage(EncryptedPacket request, StreamObserver<Status> responseObserver) {
-	    String from = request.getSender();
-	    String to = request.getReceiver();
+	    // from ve to değişkenleri kullanılmıyor, sadece forwardToPeer kullanılıyor
 
 	    MessageForwarder forwarder = new MessageForwarder(SessionManager.getAllPeers()); 
 	    boolean success = forwarder.forwardToPeer(request);
