@@ -41,7 +41,13 @@ public class LoginController {
 }
 
 private boolean isValidInput(String input) {
+    // Username için kısıtlayıcı kontrol
     return input.matches("^[a-zA-Z0-9._-]+$");
+}
+
+private boolean isValidPassword(String password) {
+    // Password için daha geniş karakter seti (özel karakterler dahil)
+    return password.matches("^[a-zA-Z0-9._@#$%^&*()+=\\[\\]{}|\\\\:;\"'<>,.?/~`!-]+$");
 }
 
 private void logSecurityIncident(String attemptedUsername) {
@@ -83,7 +89,7 @@ private void logSecurityIncident(String attemptedUsername) {
         return;
         }
     
-         if (!isValidInput(username) || !isValidInput(password)) {
+         if (!isValidInput(username) || !isValidPassword(password)) {
             showError("Invalid characters detected. This will report on your IP!");
         return;
     }
