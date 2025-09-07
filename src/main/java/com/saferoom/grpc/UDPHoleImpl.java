@@ -210,7 +210,7 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 				else{System.out.println("IT FAILED");}					
 					
 				if(EmailSender.sendPasswordResetEmail(candicate_email, username, verificationCode)) {
-						System.out.println("Successfully Registered and verification email sent!");
+						System.out.println("Successfully Reset Code Sent!");
 					}
 
 		}else{
