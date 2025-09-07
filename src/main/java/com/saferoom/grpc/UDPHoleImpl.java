@@ -228,6 +228,67 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 	}
 
 	@Override
+	public void changePassword(Request_Client request, StreamObserver<Status> responseObserver){
+		String requestData = request.getUsername(); // Format: "email:newpassword"
+		
+		try {
+			// Request formatını parse et
+			if (!requestData.contains(":")) {
+				Status errorResponse = Status.newBuilder()
+					.setMessage("INVALID_FORMAT")
+					.setCode(2)
+					.build();
+				responseObserver.onNext(errorResponse);
+				responseObserver.onCompleted();
+				return;
+			}
+			
+			String[] parts = requestData.split(":", 2);
+			String email = parts[0];
+			String newPassword = parts[1];
+			
+			// Email'in kayıtlı olup olmadığını kontrol et
+			if (!DBManager.check_email(email)) {
+				Status notFoundResponse = Status.newBuilder()
+					.setMessage("EMAIL_NOT_FOUND")
+					.setCode(1)
+					.build();
+				responseObserver.onNext(notFoundResponse);
+				responseObserver.onCompleted();
+				return;
+			}
+			
+			// Password'u değiştir
+			if (DBManager.change_users_password(email, newPassword)) {
+				System.out.println("Password successfully changed for: " + email);
+				
+				Status successResponse = Status.newBuilder()
+					.setMessage("PASSWORD_CHANGED")
+					.setCode(0)
+					.build();
+				responseObserver.onNext(successResponse);
+			} else {
+				Status failResponse = Status.newBuilder()
+					.setMessage("PASSWORD_CHANGE_FAILED")
+					.setCode(2)
+					.build();
+				responseObserver.onNext(failResponse);
+			}
+			
+		} catch (Exception e) {
+			System.err.println("Password change error: " + e.getMessage());
+			e.printStackTrace();
+			
+			Status errorResponse = Status.newBuilder()
+				.setMessage("DATABASE_ERROR")
+				.setCode(2)
+				.build();
+			responseObserver.onNext(errorResponse);
+		}
+		
+		responseObserver.onCompleted();
+	}
+	@Override
 	public void getStunInfo(Request_Client request, StreamObserver<Stun_Info> responseObserver) {
 	    String username = request.getUsername();
 	    Stun_Info peerInfo = SessionManager.getPeer(username); 

@@ -192,14 +192,32 @@ public class NewPasswordController {
             return;
         }
         
-        // TODO: Backend integration - update password in database
-        System.out.println("Password reset successfully for: " + userEmail);
-        System.out.println("New password: " + newPassword + " (for testing)");
-        
-        // Show success message and navigate to login
-        AlertUtils.showSuccess("Success", "Your password has been reset successfully. You can now login with your new password.");
-        
-        handleBackToLogin();
+        // Server integration - update password in database
+        try {
+            int result = com.saferoom.client.ClientMenu.changePassword(userEmail, newPassword);
+            
+            switch (result) {
+                case 0: // PASSWORD_CHANGED
+                    System.out.println("Password reset successfully for: " + userEmail);
+                    AlertUtils.showSuccess("Success", 
+                        "Your password has been reset successfully! You can now login with your new password.");
+                    handleBackToLogin();
+                    break;
+                    
+                case 1: // EMAIL_NOT_FOUND
+                    showError("Email address not found. Please contact support.");
+                    break;
+                    
+                case 2: // INVALID_FORMAT, PASSWORD_CHANGE_FAILED, DATABASE_ERROR
+                default:
+                    showError("Failed to reset password. Please try again or contact support.");
+                    break;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Password reset error: " + e.getMessage());
+            showError("Connection error occurred. Please check your internet connection and try again.");
+        }
     }
 
     private void handleBackToLogin() {

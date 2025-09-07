@@ -205,8 +205,42 @@ public class DBManager {
 			
 		}
 	}
+
+	public static boolean change_users_password(String usernameOrEmail, String rawPassword) throws Exception {
+		String salt = CryptoUtils.generateSalt();
+		String hashedPassword = CryptoUtils.hashPasswordWithSalt(rawPassword, salt);
+
+		String query = "UPDATE users SET password_hash = (?), salt = (?), last_login = NOW() WHERE username = (?) OR email = (?)";
+		
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(query)) {
+			
+			stmt.setString(1, hashedPassword);
+			stmt.setString(2, salt);
+			stmt.setString(3, usernameOrEmail);
+			stmt.setString(4, usernameOrEmail);
+			
+			int rowsUpdated = stmt.executeUpdate();
+			
+			if (rowsUpdated > 0) {
+				LOGGER.info("Password successfully changed for user: " + usernameOrEmail);
+				
+				resetLoginAttempts(usernameOrEmail);
+				
+				return true;
+			} else {
+				LOGGER.warn("Password change failed - user not found: " + usernameOrEmail);
+				return false;
+			}
+		} catch (SQLException e) {
+			LOGGER.error("Database error during password change: " + e.getMessage());
+			throw new Exception("Failed to change password: " + e.getMessage(), e);
+		}
+	}
+
+
 	public static boolean isUserBlocked(String usernameOrEmail) throws Exception{
-		String query = "SELECT username FROM blocked_users WHERE username =(?) OR username = (SELECT username FROM users WHERE email = (?))";
+		String query = "SELECT username FROM blocked_users WHERE username =(?) OR username = (SELECT username FROM users WHERE email = (?));";
 		try(Connection con = getConnection();
 			PreparedStatement st = con.prepareStatement(query)){
 			st.setString(1, usernameOrEmail);
