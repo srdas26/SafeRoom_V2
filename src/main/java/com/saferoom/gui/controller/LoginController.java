@@ -110,24 +110,47 @@ private void logSecurityIncident(String attemptedUsername) {
 
          
        try {
-           int loginResult = ClientMenu.Login(username, password);
-           switch (loginResult) {
-            case 0:
-                 // Save credentials if Remember Me is checked
-                 if (rememberMe.isSelected()) {
-                     saveCredentials(username, password);
-                 } else {
-                     clearSavedCredentials();
-                 }
-                 
-                 // Create UserInfo for traditional login and save to session
-                 UserInfo traditionalUser = new UserInfo();
-                 traditionalUser.setName(username); // Use username as display name
-                 traditionalUser.setEmail(username.contains("@") ? username : username + "@saferoom.local");
-                 traditionalUser.setProvider("Traditional");
-                 UserSession.getInstance().setCurrentUser(traditionalUser, "traditional");
-                 
-                 try {
+           String loginResult = ClientMenu.Login(username, password);
+           
+           if (loginResult.equals("N_REGISTER")) {
+               showError("User not registered!");
+               return;
+           } else if (loginResult.equals("WRONG_PASSWORD")) {
+               showError("Wrong password!");
+               return;
+           } else if (loginResult.equals("BLOCKED_USER")) {
+               showError("Account blocked! Please contact support.");
+               return;
+           } else if (loginResult.equals("ERROR")) {
+               showError("Connection error occurred!");
+               return;
+           } else {
+               // Login başarılı, loginResult eksik bilgiyi içeriyor
+               // Save credentials if Remember Me is checked
+               if (rememberMe.isSelected()) {
+                   saveCredentials(username, password);
+               } else {
+                   clearSavedCredentials();
+               }
+               
+               // Create UserInfo for traditional login and save to session
+               UserInfo traditionalUser = new UserInfo();
+               
+               // Kullanıcının hangi şekilde giriş yaptığını ve eksik bilgiyi belirle
+               if (username.contains("@")) {
+                   // Email ile giriş yapmış, loginResult username içeriyor
+                   traditionalUser.setName(loginResult); // Server'dan gelen username
+                   traditionalUser.setEmail(username); // Kullanıcının girdiği email
+               } else {
+                   // Username ile giriş yapmış, loginResult email içeriyor
+                   traditionalUser.setName(username); // Kullanıcının girdiği username
+                   traditionalUser.setEmail(loginResult); // Server'dan gelen email
+               }
+               
+               traditionalUser.setProvider("Traditional");
+               UserSession.getInstance().setCurrentUser(traditionalUser, "traditional");
+               
+               try {
                  Stage loginStage = (Stage) rootPane.getScene().getWindow();
                  loginStage.close();
                  Stage mainStage = new Stage();
@@ -158,23 +181,7 @@ private void logSecurityIncident(String attemptedUsername) {
                     e.printStackTrace();
                     showError("Ana sayfa yüklenemedi.");
                 }
-                break;
-            case 1:
-                showError("You are not Registered Yet!Let's make you a member!.");
-            break;
-
-            case 2:
-                showError("Blocked User, this incident will report.");
-            break;
-
-            case 3:
-                showError("Wrong Password, Please try again.");
-            break;
-
-            default:
-                showError("An unknown error occurred. Please try again.");
-            break;
-       }
+            }
        } catch (io.grpc.StatusRuntimeException e) {
            System.err.println("gRPC Connection Error: " + e.getMessage());
            if (e.getStatus().getCode() == io.grpc.Status.Code.CANCELLED) {

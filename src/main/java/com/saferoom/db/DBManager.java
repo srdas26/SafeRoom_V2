@@ -123,6 +123,20 @@ public class DBManager {
 	        }
 	    }
 	}
+
+	public static String getUsernameByEmail(String email) throws SQLException{
+		String query = "SELECT username FROM users WHERE email = (?);";
+		try(Connection conn = getConnection();
+			PreparedStatement stmt = conn.prepareStatement(query)){
+				stmt.setString(1, email);
+				ResultSet rs = stmt.executeQuery();
+				if(rs.next()){
+					return rs.getString("username");
+				}else{
+					return null;	
+				}
+			}	
+	}
 	
 
 	public static boolean check_email(String mail) throws SQLException{

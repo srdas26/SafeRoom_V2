@@ -17,7 +17,7 @@ public class ClientMenu{
 	public static String myUsername = "abkarada";
 	public static String target_username = "james";
 
-		public static int Login(String username, String Password)
+		public static String Login(String username, String Password)
 		{
 		ManagedChannel channel = null;
 		try {
@@ -38,21 +38,21 @@ public class ClientMenu{
 			switch(code){
 				case 0:
 					System.out.println("Success!");
-					return 0;
+					return message; // Server'dan gelen eksik bilgiyi döndür (email veya username)
 				case 1:
 					if(message.equals("N_REGISTER")){
 						System.out.println("Not Registered");
-						return 1;
+						return "N_REGISTER";
 					}else if(message.equals("WRONG_PASSWORD")){
 						System.out.println("Wrong Password");
-						return 3;
+						return "WRONG_PASSWORD";
 						}else{
 							System.out.println("Blocked User");
-							return 2;
+							return "BLOCKED_USER";
 						}
 			default:
 					System.out.println("Message has broken");
-					return 4;					
+					return "ERROR";					
 				}
 		} finally {
 			if (channel != null) {

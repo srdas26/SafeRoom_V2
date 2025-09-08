@@ -48,8 +48,21 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 				if(DBManager.verifyPassword(usernameOrEmail, hash_password)){
 					// Doğru şifre: attempt sayısını sıfırla
 					DBManager.resetLoginAttempts(usernameOrEmail);
+					
+					// Kullanıcının email ile mi username ile mi giriş yaptığını kontrol et
+					String responseMessage;
+					if (usernameOrEmail.contains("@")) {
+						// Email ile giriş yapmış, username'i döndür
+						String username = DBManager.getUsernameByEmail(usernameOrEmail);
+						responseMessage = username != null ? username : "UNKNOWN_USER";
+					} else {
+						// Username ile giriş yapmış, email'i döndür  
+						String email = DBManager.getEmailByUsername(usernameOrEmail);
+						responseMessage = email != null ? email : "UNKNOWN_EMAIL";
+					}
+
 					Status stat = Status.newBuilder()
-						.setMessage("ALL_GOOD")
+						.setMessage(responseMessage) // "ALL_GOOD" yerine eksik bilgiyi gönder
 						.setCode(0)
 						.build();
 					DBManager.updateLastLogin(usernameOrEmail);
