@@ -353,8 +353,11 @@ public class MainController {
 
     public void handleLogout() {
         try {
-            // Stop heartbeat service
-            com.saferoom.gui.utils.HeartbeatService.getInstance().stopHeartbeat();
+            // Get current username before clearing session
+            String currentUsername = UserSession.getInstance().getDisplayName();
+            
+            // Stop heartbeat service and end session
+            com.saferoom.gui.utils.HeartbeatService.getInstance().stopHeartbeat(currentUsername);
             
             // Clear user session
             UserSession.getInstance().clearSession();

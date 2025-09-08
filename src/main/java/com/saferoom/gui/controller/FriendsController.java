@@ -46,6 +46,7 @@ public class FriendsController {
     private final ObservableList<Friend> allFriends = FXCollections.observableArrayList();
     private final ObservableList<Friend> pendingFriends = FXCollections.observableArrayList();
     private Timeline searchDebouncer;
+    private Timeline friendsRefresher;
 
     @FXML
     public void initialize() {
@@ -62,6 +63,9 @@ public class FriendsController {
         // Set "All" as the default active tab on initialization
         filterBar.getChildren().get(1).getStyleClass().add("active-tab");
         loadAllFriends();
+        
+        // Setup auto-refresh for friends list every 30 seconds
+        setupAutoRefresh();
     }
 
     /**
@@ -640,5 +644,18 @@ public class FriendsController {
         } catch (Exception e) {
             System.err.println("Error opening profile: " + e.getMessage());
         }
+    }
+    
+    /**
+     * Auto-refresh setup for friends list
+     */
+    private void setupAutoRefresh() {
+        // Her 30 saniyede bir friends listesini yenile
+        friendsRefresher = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
+            System.out.println("🔄 Auto-refreshing friends list...");
+            loadFriendsData();
+        }));
+        friendsRefresher.setCycleCount(Timeline.INDEFINITE);
+        friendsRefresher.play();
     }
 }

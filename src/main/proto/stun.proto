@@ -41,6 +41,8 @@ rpc GetFriendshipStats(Request_Client) returns (FriendshipStatsResponse);
 
 rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 
+rpc EndUserSession(HeartbeatRequest) returns (Status);
+
 rpc GetStunInfo(Request_Client) returns (Stun_Info);
 
 rpc PunchTest(FromTo) returns (Status);

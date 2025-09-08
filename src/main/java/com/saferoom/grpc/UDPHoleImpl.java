@@ -1143,6 +1143,42 @@ public void sendFriendRequest(FriendRequest request, StreamObserver<FriendRespon
 		}
 	}
 	
+	@Override
+	public void endUserSession(SafeRoomProto.HeartbeatRequest request, StreamObserver<Status> responseObserver) {
+		try {
+			String username = request.getUsername();
+			String sessionId = request.getSessionId();
+			
+			System.out.println("🗑️ Ending session for: " + username + " (session: " + sessionId + ")");
+			
+			boolean success = DBManager.endUserSession(username, sessionId);
+			
+			Status response;
+			if (success) {
+				response = Status.newBuilder()
+					.setMessage("Session ended successfully")
+					.setCode(0)
+					.build();
+			} else {
+				response = Status.newBuilder()
+					.setMessage("Failed to end session")
+					.setCode(1)
+					.build();
+			}
+			
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+			
+		} catch (Exception e) {
+			System.err.println("❌ Error ending session: " + e.getMessage());
+			responseObserver.onNext(Status.newBuilder()
+				.setMessage("Error: " + e.getMessage())
+				.setCode(2)
+				.build());
+			responseObserver.onCompleted();
+		}
+	}
+	
 	// ...existing code...
 	
 

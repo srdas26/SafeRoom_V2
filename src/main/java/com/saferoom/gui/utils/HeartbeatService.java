@@ -73,11 +73,28 @@ public class HeartbeatService {
      * Heartbeat servisini durdur
      */
     public void stopHeartbeat() {
+        stopHeartbeat(null);
+    }
+    
+    /**
+     * Heartbeat servisini durdur ve session'ı temizle
+     */
+    public void stopHeartbeat(String username) {
         if (!isRunning) {
             return;
         }
         
         System.out.println("💔 Stopping heartbeat service");
+        
+        // Session'ı sunucudan temizle
+        if (username != null) {
+            try {
+                com.saferoom.client.ClientMenu.endUserSession(username, sessionId);
+                System.out.println("🗑️ Session ended for: " + username);
+            } catch (Exception e) {
+                System.err.println("❌ Failed to end session: " + e.getMessage());
+            }
+        }
         isRunning = false;
         
         if (scheduler != null && !scheduler.isShutdown()) {
