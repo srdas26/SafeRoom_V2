@@ -1109,7 +1109,11 @@ public class DBManager {
                     ELSE f.user1 
                 END as friend_username,
                 f.created_at as friendship_date,
-                u.email, u.last_login, u.is_verified
+                u.email, u.last_login, u.is_verified,
+                CASE 
+                    WHEN u.last_login >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1
+                    ELSE 0
+                END as is_online
             FROM friendships f
             JOIN users u ON (
                 CASE 
@@ -1118,7 +1122,7 @@ public class DBManager {
                 END
             )
             WHERE f.user1 = ? OR f.user2 = ?
-            ORDER BY f.created_at DESC
+            ORDER BY is_online DESC, f.created_at DESC
         """;
         
         java.util.List<java.util.Map<String, Object>> friends = new java.util.ArrayList<>();
@@ -1139,6 +1143,7 @@ public class DBManager {
                 friend.put("friendshipDate", rs.getTimestamp("friendship_date"));
                 friend.put("lastSeen", rs.getTimestamp("last_login"));
                 friend.put("isVerified", rs.getBoolean("is_verified"));
+                friend.put("isOnline", rs.getBoolean("is_online"));
                 friends.add(friend);
             }
         }

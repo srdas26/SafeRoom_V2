@@ -259,6 +259,7 @@ message FriendInfo {
     string friendshipDate = 3;
     string lastSeen = 4;
     bool isVerified = 5;
+    bool isOnline = 6;
 }
 
 message FriendsListResponse {
