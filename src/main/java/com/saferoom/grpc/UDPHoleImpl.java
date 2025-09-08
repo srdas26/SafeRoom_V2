@@ -33,6 +33,15 @@ import com.saferoom.grpc.SafeRoomProto.UserResult;
 import com.saferoom.db.*;
 import com.saferoom.email.EmailSender;
 import com.saferoom.sessions.*;
+import com.saferoom.grpc.SafeRoomProto.ProfileRequest;
+import com.saferoom.grpc.SafeRoomProto.ProfileResponse;
+import com.saferoom.grpc.SafeRoomProto.UserProfile;
+import com.saferoom.grpc.SafeRoomProto.UserStats;
+import com.saferoom.grpc.SafeRoomProto.UserActivity;
+import com.saferoom.grpc.SafeRoomProto.FriendRequest;
+import com.saferoom.grpc.SafeRoomProto.FriendResponse;
+import java.text.SimpleDateFormat;
+import java.sql.Timestamp;
 
 
 import io.grpc.stub.StreamObserver;
@@ -373,6 +382,163 @@ public class UDPHoleImpl extends UDPHoleGrpc.UDPHoleImplBase {
 			responseObserver.onError(e);
 		}
 	}
+
+	// ===============================
+// PROFILE SYSTEM METHODS
+// ===============================
+
+@Override
+public void getProfile(ProfileRequest request, StreamObserver<ProfileResponse> responseObserver) {
+    try {
+        String username = request.getUsername();
+        String requestedBy = request.getRequestedBy();
+        
+        System.out.println("📋 Profile request for '" + username + "' by '" + requestedBy + "'");
+        
+        // Kullanıcı var mı kontrol et
+        if (!DBManager.userExists(username)) {
+            System.out.println("❌ User '" + username + "' not found");
+            responseObserver.onNext(ProfileResponse.newBuilder()
+                .setSuccess(false)
+                .setMessage("User not found")
+                .build());
+            responseObserver.onCompleted();
+            return;
+        }
+        
+        // Profile bilgilerini al
+        java.util.Map<String, Object> profileData = DBManager.getUserProfile(username, requestedBy);
+        
+        if (profileData == null) {
+            System.out.println("❌ Failed to load profile for '" + username + "'");
+            responseObserver.onNext(ProfileResponse.newBuilder()
+                .setSuccess(false)
+                .setMessage("Failed to load profile")
+                .build());
+            responseObserver.onCompleted();
+            return;
+        }
+        
+        // Date formatter
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy");
+        SimpleDateFormat timeFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm");
+        
+        // Stats bilgilerini al
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> statsData = (java.util.Map<String, Object>) profileData.get("stats");
+        
+        UserStats stats = UserStats.newBuilder()
+            .setRoomsCreated((Integer) statsData.get("roomsCreated"))
+            .setRoomsJoined((Integer) statsData.get("roomsJoined"))
+            .setFilesShared((Integer) statsData.get("filesShared"))
+            .setMessagesSent((Integer) statsData.get("messagesSent"))
+            .setSecurityScore((Double) statsData.get("securityScore"))
+            .build();
+        
+        // Activities bilgilerini al
+        @SuppressWarnings("unchecked")
+        java.util.List<java.util.Map<String, Object>> activitiesData = 
+            (java.util.List<java.util.Map<String, Object>>) profileData.get("activities");
+        
+        UserProfile.Builder profileBuilder = UserProfile.newBuilder()
+            .setUsername((String) profileData.get("username"))
+            .setEmail((String) profileData.get("email"))
+            .setJoinDate(dateFormat.format((Timestamp) profileData.get("joinDate")))
+            .setLastSeen(timeFormat.format((Timestamp) profileData.get("lastSeen")))
+            .setIsOnline(false) // TODO: Online status implementation
+            .setStats(stats)
+            .setFriendStatus((String) profileData.get("friendStatus"));
+        
+        // Activities ekle
+        for (java.util.Map<String, Object> activity : activitiesData) {
+            UserActivity userActivity = UserActivity.newBuilder()
+                .setActivityType((String) activity.get("activityType"))
+                .setDescription((String) activity.get("description"))
+                .setTimestamp(timeFormat.format((Timestamp) activity.get("timestamp")))
+                .setActivityData(activity.get("activityData") != null ? (String) activity.get("activityData") : "")
+                .build();
+            profileBuilder.addRecentActivities(userActivity);
+        }
+        
+        // Friend status kontrolü
+        String friendStatus = (String) profileData.get("friendStatus");
+        profileBuilder.setIsFriend("friends".equals(friendStatus));
+        
+        UserProfile profile = profileBuilder.build();
+        
+        System.out.println("✅ Profile loaded for '" + username + "' - Friend status: " + friendStatus);
+        
+        responseObserver.onNext(ProfileResponse.newBuilder()
+            .setSuccess(true)
+            .setMessage("Profile loaded successfully")
+            .setProfile(profile)
+            .build());
+        responseObserver.onCompleted();
+        
+    } catch (Exception e) {
+        System.err.println("❌ Profile request error: " + e.getMessage());
+        e.printStackTrace();
+        responseObserver.onNext(ProfileResponse.newBuilder()
+            .setSuccess(false)
+            .setMessage("Server error: " + e.getMessage())
+            .build());
+        responseObserver.onCompleted();
+    }
+}
+
+@Override
+public void sendFriendRequest(FriendRequest request, StreamObserver<FriendResponse> responseObserver) {
+    try {
+        String sender = request.getSender();
+        String receiver = request.getReceiver();
+        String message = request.getMessage();
+        
+        System.out.println("👥 Friend request: '" + sender + "' -> '" + receiver + "'");
+        
+        // Kullanıcılar var mı kontrol et
+        if (!DBManager.userExists(sender) || !DBManager.userExists(receiver)) {
+            System.out.println("❌ One or both users not found");
+            responseObserver.onNext(FriendResponse.newBuilder()
+                .setSuccess(false)
+                .setMessage("User not found")
+                .setStatus("error")
+                .build());
+            responseObserver.onCompleted();
+            return;
+        }
+        
+        // Friend request gönder
+        boolean success = DBManager.sendFriendRequest(sender, receiver, message);
+        
+        if (success) {
+            System.out.println("✅ Friend request sent successfully");
+            responseObserver.onNext(FriendResponse.newBuilder()
+                .setSuccess(true)
+                .setMessage("Friend request sent successfully")
+                .setStatus("sent")
+                .build());
+        } else {
+            System.out.println("❌ Friend request failed (already exists or blocked)");
+            responseObserver.onNext(FriendResponse.newBuilder()
+                .setSuccess(false)
+                .setMessage("Friend request already exists or users are blocked")
+                .setStatus("failed")
+                .build());
+        }
+        
+        responseObserver.onCompleted();
+        
+    } catch (Exception e) {
+        System.err.println("❌ Friend request error: " + e.getMessage());
+        e.printStackTrace();
+        responseObserver.onNext(FriendResponse.newBuilder()
+            .setSuccess(false)
+            .setMessage("Server error: " + e.getMessage())
+            .setStatus("error")
+            .build());
+        responseObserver.onCompleted();
+    }
+}
 
 	@Override
 	public void punchTest(FromTo request, StreamObserver<Status> responseObserver) {

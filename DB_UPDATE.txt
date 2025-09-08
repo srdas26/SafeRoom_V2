@@ -1,0 +1,54 @@
+-- 1. User Activities
+CREATE TABLE user_activities (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    activity_type ENUM('friend_request_sent', 'friend_request_received', 'room_created', 'room_joined', 'file_shared', 'message_sent', 'login', 'logout') NOT NULL,
+    activity_description TEXT,
+    activity_data TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+);
+
+-- 2. User Stats
+CREATE TABLE user_stats (
+    username VARCHAR(50) PRIMARY KEY,
+    rooms_created INT DEFAULT 0,
+    rooms_joined INT DEFAULT 0,
+    files_shared INT DEFAULT 0,
+    messages_sent INT DEFAULT 0,
+    security_score DECIMAL(5,2) DEFAULT 0.0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+);
+
+-- 3. Friend Requests
+CREATE TABLE friend_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    sender VARCHAR(50) NOT NULL,
+    receiver VARCHAR(50) NOT NULL,
+    message TEXT,
+    status ENUM('pending', 'accepted', 'declined') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (receiver) REFERENCES users(username) ON DELETE CASCADE,
+    UNIQUE KEY unique_request (sender, receiver)
+);
+
+-- 4. Friendships
+CREATE TABLE friendships (
+    user1 VARCHAR(50) NOT NULL,
+    user2 VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user1, user2),
+    FOREIGN KEY (user1) REFERENCES users(username) ON DELETE CASCADE,
+    FOREIGN KEY (user2) REFERENCES users(username) ON DELETE CASCADE,
+    CHECK (user1 < user2)
+);
+
+-- 5. Indexes
+CREATE INDEX idx_activities_username ON user_activities(username);
+CREATE INDEX idx_activities_created ON user_activities(created_at);
+CREATE INDEX idx_friend_requests_sender ON friend_requests(sender);
+CREATE INDEX idx_friend_requests_receiver ON friend_requests(receiver);
+CREATE INDEX idx_friend_requests_status ON friend_requests(status);

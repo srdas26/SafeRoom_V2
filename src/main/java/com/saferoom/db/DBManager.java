@@ -623,5 +623,269 @@ public class DBManager {
 			}
 		}
 		return results;
+	}	
+	// ===============================
+	// PROFILE & FRIEND SYSTEM METHODS
+	// ===============================
+	
+	/**
+	 * Kullanıcı profil bilgilerini getir
+	 */
+	public static java.util.Map<String, Object> getUserProfile(String username, String requestedBy) throws SQLException {
+		String query = """
+			SELECT u.username, u.email, u.created_at, u.last_login, u.is_verified,
+				   COALESCE(s.rooms_created, 0) as rooms_created,
+				   COALESCE(s.rooms_joined, 0) as rooms_joined,
+				   COALESCE(s.files_shared, 0) as files_shared,
+				   COALESCE(s.messages_sent, 0) as messages_sent,
+				   COALESCE(s.security_score, 0.0) as security_score
+			FROM users u
+			LEFT JOIN user_stats s ON u.username = s.username
+			WHERE u.username = ? AND u.is_verified = TRUE
+		""";
+		
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(query)) {
+			
+			stmt.setString(1, username);
+			ResultSet rs = stmt.executeQuery();
+			
+			if (rs.next()) {
+				java.util.Map<String, Object> profile = new java.util.HashMap<>();
+				profile.put("username", rs.getString("username"));
+				profile.put("email", rs.getString("email"));
+				profile.put("joinDate", rs.getTimestamp("created_at"));
+				profile.put("lastSeen", rs.getTimestamp("last_login"));
+				profile.put("isVerified", rs.getBoolean("is_verified"));
+				
+				// Stats
+				java.util.Map<String, Object> stats = new java.util.HashMap<>();
+				stats.put("roomsCreated", rs.getInt("rooms_created"));
+				stats.put("roomsJoined", rs.getInt("rooms_joined"));
+				stats.put("filesShared", rs.getInt("files_shared"));
+				stats.put("messagesSent", rs.getInt("messages_sent"));
+				stats.put("securityScore", rs.getDouble("security_score"));
+				profile.put("stats", stats);
+				
+				// Friend status
+				profile.put("friendStatus", getFriendshipStatus(requestedBy, username));
+				
+				// Recent activities
+				profile.put("activities", getUserActivities(username, 5));
+				
+				return profile;
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Kullanıcının son aktivitelerini getir
+	 */
+	public static java.util.List<java.util.Map<String, Object>> getUserActivities(String username, int limit) throws SQLException {
+		String query = """
+			SELECT activity_type, activity_description, created_at, activity_data
+			FROM user_activities 
+			WHERE username = ? 
+			ORDER BY created_at DESC 
+			LIMIT ?
+		""";
+		
+		java.util.List<java.util.Map<String, Object>> activities = new java.util.ArrayList<>();
+		
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(query)) {
+			
+			stmt.setString(1, username);
+			stmt.setInt(2, limit);
+			
+			ResultSet rs = stmt.executeQuery();
+			while (rs.next()) {
+				java.util.Map<String, Object> activity = new java.util.HashMap<>();
+				activity.put("activityType", rs.getString("activity_type"));
+				activity.put("description", rs.getString("activity_description"));
+				activity.put("timestamp", rs.getTimestamp("created_at"));
+				activity.put("activityData", rs.getString("activity_data"));
+				activities.add(activity);
+			}
+		}
+		return activities;
+	}
+	
+	/**
+	 * İki kullanıcı arasındaki arkadaşlık durumunu kontrol et
+	 */
+	public static String getFriendshipStatus(String user1, String user2) throws SQLException {
+		if (user1 == null || user2 == null || user1.equals(user2)) {
+			return "none";
+		}
+		
+		// Blocked check
+		String blockQuery = "SELECT 1 FROM blocked_users WHERE username = ? OR username = ?";
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(blockQuery)) {
+			stmt.setString(1, user1);
+			stmt.setString(2, user2);
+			
+			if (stmt.executeQuery().next()) {
+				return "blocked";
+			}
+		}
+		
+		// Friend check
+		String friendQuery = "SELECT 1 FROM friendships WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)";
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(friendQuery)) {
+			String minUser = user1.compareTo(user2) < 0 ? user1 : user2;
+			String maxUser = user1.compareTo(user2) < 0 ? user2 : user1;
+			
+			stmt.setString(1, minUser);
+			stmt.setString(2, maxUser);
+			stmt.setString(3, minUser);
+			stmt.setString(4, maxUser);
+			
+			if (stmt.executeQuery().next()) {
+				return "friends";
+			}
+		}
+		
+		// Pending request check
+		String pendingQuery = "SELECT sender FROM friend_requests WHERE ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) AND status = 'pending'";
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(pendingQuery)) {
+			stmt.setString(1, user1);
+			stmt.setString(2, user2);
+			stmt.setString(3, user2);
+			stmt.setString(4, user1);
+			
+			ResultSet rs = stmt.executeQuery();
+			if (rs.next()) {
+				String sender = rs.getString("sender");
+				return sender.equals(user1) ? "request_sent" : "request_received";
+			}
+		}
+		
+		return "none";
+	}
+	
+	/**
+	 * Arkadaşlık isteği gönder
+	 */
+	public static boolean sendFriendRequest(String sender, String receiver, String message) throws SQLException {
+		// Self request check
+		if (sender.equals(receiver)) {
+			return false;
+		}
+		
+		// Existing request check
+		String checkQuery = "SELECT status FROM friend_requests WHERE ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?))";
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(checkQuery)) {
+			stmt.setString(1, sender);
+			stmt.setString(2, receiver);
+			stmt.setString(3, receiver);
+			stmt.setString(4, sender);
+			
+			if (stmt.executeQuery().next()) {
+				return false; // Already exists
+			}
+		}
+		
+		// Check if already friends
+		if ("friends".equals(getFriendshipStatus(sender, receiver))) {
+			return false;
+		}
+		
+		// Check if blocked
+		if ("blocked".equals(getFriendshipStatus(sender, receiver))) {
+			return false;
+		}
+		
+		// Insert friend request
+		String insertQuery = "INSERT INTO friend_requests (sender, receiver, message, status) VALUES (?, ?, ?, 'pending')";
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
+			stmt.setString(1, sender);
+			stmt.setString(2, receiver);
+			stmt.setString(3, message);
+			
+			int affected = stmt.executeUpdate();
+			
+			// Log activity
+			if (affected > 0) {
+				logUserActivity(sender, "friend_request_sent", "Sent friend request to " + receiver, null);
+				logUserActivity(receiver, "friend_request_received", "Received friend request from " + sender, null);
+			}
+			
+			return affected > 0;
+		}
+	}
+	
+	
+	/**
+	 * Kullanıcı aktivitesi kaydet
+	 */
+	public static void logUserActivity(String username, String activityType, String description, String activityData) {
+		String query = "INSERT INTO user_activities (username, activity_type, activity_description, activity_data) VALUES (?, ?, ?, ?)";
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(query)) {
+			stmt.setString(1, username);
+			stmt.setString(2, activityType);
+			stmt.setString(3, description);
+			stmt.setString(4, activityData);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			System.out.println( e.getMessage());
+		}
+	}
+	
+	/**
+	 * Kullanıcı istatistiklerini güncelle
+	 */
+	public static void updateUserStats(String username, String statType, int increment) {
+		String query = """
+			INSERT INTO user_stats (username, %s) VALUES (?, ?) 
+			ON DUPLICATE KEY UPDATE %s = %s + ?, last_updated = CURRENT_TIMESTAMP
+		""".formatted(statType, statType, statType);
+		
+		try (Connection conn = getConnection();
+			 PreparedStatement stmt = conn.prepareStatement(query)) {
+			stmt.setString(1, username);
+			stmt.setInt(2, increment);
+			stmt.setInt(3, increment);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			System.out.println("Failed to update user stats: " + e.getMessage());
+		}
+	}
+	
+	/**
+	 * Güvenlik skorunu hesapla ve güncelle
+	 */
+	public static void updateSecurityScore(String username) {
+		try {
+			java.util.Map<String, Object> stats = getUserProfile(username, username);
+			if (stats != null) {
+				@SuppressWarnings("unchecked")
+				java.util.Map<String, Object> userStats = (java.util.Map<String, Object>) stats.get("stats");
+				
+				int roomsCreated = (Integer) userStats.get("roomsCreated");
+				int filesShared = (Integer) userStats.get("filesShared");
+				int messagesCount = (Integer) userStats.get("messagesSent");
+				
+				// Simple security score calculation
+				double score = Math.min(100.0, (roomsCreated * 10) + (filesShared * 2) + (messagesCount * 0.1));
+				
+				String updateQuery = "UPDATE user_stats SET security_score = ? WHERE username = ?";
+				try (Connection conn = getConnection();
+					 PreparedStatement stmt = conn.prepareStatement(updateQuery)) {
+					stmt.setDouble(1, score);
+					stmt.setString(2, username);
+					stmt.executeUpdate();
+				}
+			}
+		} catch (SQLException e) {
+			System.out.println("Failed to update security score: " + e.getMessage());
+		}
 	}
 }

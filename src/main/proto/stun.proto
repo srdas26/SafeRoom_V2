@@ -17,6 +17,10 @@ rpc ChangePassword(Request_Client) returns (Status);
 
 rpc SearchUsers(SearchRequest) returns (SearchResponse);
 
+rpc GetProfile(ProfileRequest) returns (ProfileResponse);
+
+rpc SendFriendRequest(FriendRequest) returns (FriendResponse);
+
 rpc RegisterClient(Stun_Info) returns (Status);
 
 rpc GetStunInfo(Request_Client) returns (Stun_Info);
@@ -149,4 +153,54 @@ message SearchResponse {
     bool success = 1;
     string message = 2;
     repeated UserResult users = 3;
+}
+
+message ProfileRequest {
+    string username = 1;
+    string requestedBy = 2;
+}
+
+message UserProfile {
+    string username = 1;
+    string email = 2;
+    string joinDate = 3;
+    string lastSeen = 4;
+    bool isOnline = 5;
+    UserStats stats = 6;
+    repeated UserActivity recentActivities = 7;
+    bool isFriend = 8;
+    string friendStatus = 9; // none, pending, friends, blocked
+}
+
+message UserStats {
+    int32 roomsCreated = 1;
+    int32 roomsJoined = 2;
+    int32 filesShared = 3;
+    int32 messagesSent = 4;
+    double securityScore = 5;
+}
+
+message UserActivity {
+    string activityType = 1;
+    string description = 2;
+    string timestamp = 3;
+    string activityData = 4;
+}
+
+message ProfileResponse {
+    bool success = 1;
+    string message = 2;
+    UserProfile profile = 3;
+}
+
+message FriendRequest {
+    string sender = 1;
+    string receiver = 2;
+    string message = 3;
+}
+
+message FriendResponse {
+    bool success = 1;
+    string message = 2;
+    string status = 3; // sent, accepted, declined, blocked
 }
