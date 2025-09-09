@@ -592,7 +592,7 @@ public class DBManager {
 			       CASE WHEN f.user1 IS NOT NULL THEN TRUE ELSE FALSE END as is_friend,
 			       CASE WHEN fr.id IS NOT NULL THEN TRUE ELSE FALSE END as has_pending_request
 			FROM users u
-			LEFT JOIN friends f ON (f.user1 = ? AND f.user2 = u.username) OR (f.user2 = ? AND f.user1 = u.username)
+			LEFT JOIN friendships f ON (f.user1 = ? AND f.user2 = u.username) OR (f.user2 = ? AND f.user1 = u.username)
 			LEFT JOIN friend_requests fr ON fr.sender = ? AND fr.receiver = u.username AND fr.status = 'pending'
 			WHERE (u.username LIKE ? OR u.email LIKE ?) 
 			AND u.username != ? 
