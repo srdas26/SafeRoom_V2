@@ -24,7 +24,6 @@ public class P2PHolePuncher {
     private static final long PUNCH_TIMEOUT_MS = 15_000;
     private static final long RESEND_INTERVAL_MS = 200; // Daha hızlı burst
     private static final long SELECT_BLOCK_MS = 50;
-    private static final int BURST_PACKET_COUNT = 3; // Her seferinde 3 paket gönder
     
     // LLS Protocol signals (server ile)
     private static final byte SIG_HELLO = 0x10;
@@ -92,15 +91,12 @@ public class P2PHolePuncher {
             
             while (System.currentTimeMillis() - start < SIGNALING_TIMEOUT_MS) {
                 
-                // Her 1 saniyede HELLO burst gönder
+                // Her 1 saniyede HELLO gönder (server'a sadece 1 paket!)
                 if (System.currentTimeMillis() - lastHello > 1000) {
-                    // BURST: Server'a birden fazla HELLO gönder (NAT stability için)
-                    for (int burst = 0; burst < BURST_PACKET_COUNT; burst++) {
-                        hello.rewind();
-                        channel.send(hello, serverAddr);
-                    }
+                    hello.rewind();
+                    channel.send(hello, serverAddr);
                     lastHello = System.currentTimeMillis();
-                    System.out.printf("🔄 Sent %d HELLO bursts to server%n", BURST_PACKET_COUNT);
+                    System.out.println("🔄 Resending HELLO to server...");
                 }
                 
                 selector.select(SELECT_BLOCK_MS);
@@ -183,15 +179,20 @@ public class P2PHolePuncher {
     }
     
     private static ByteBuffer createLLSPacket(byte signal, String sender, String target) {
-        byte[] senderBytes = sender.getBytes();
-        byte[] targetBytes = target.getBytes();
-        
-        ByteBuffer packet = ByteBuffer.allocate(1 + 2 + senderBytes.length + 2 + targetBytes.length);
+        // LLS Fixed-Length Format: [type][len][sender_20][target_20]
+        ByteBuffer packet = ByteBuffer.allocate(1 + 2 + 20 + 20);
         packet.put(signal);
-        packet.putShort((short) senderBytes.length);
+        packet.putShort((short) 40); // Fixed: 20 + 20
+        
+        // Sender - fixed 20 bytes
+        byte[] senderBytes = sender.getBytes();
         packet.put(senderBytes);
-        packet.putShort((short) targetBytes.length);
+        for (int i = senderBytes.length; i < 20; i++) packet.put((byte) 0);
+        
+        // Target - fixed 20 bytes  
+        byte[] targetBytes = target.getBytes();
         packet.put(targetBytes);
+        for (int i = targetBytes.length; i < 20; i++) packet.put((byte) 0);
         
         packet.flip();
         return packet;
@@ -227,7 +228,7 @@ public class P2PHolePuncher {
             
             while (System.currentTimeMillis() - start < PUNCH_TIMEOUT_MS && !connectionEstablished) {
                 
-                // Her 200ms'de P2P HELLO paketleri gönder (BURST MODE)
+                // Her 200ms'de P2P HELLO paketleri gönder (AGGRESSIVE BURST MODE)
                 if (System.currentTimeMillis() - lastSend > RESEND_INTERVAL_MS) {
                     for (int i = 0; i < channels.size() && i < targetPorts.size(); i++) {
                         DatagramChannel dc = channels.get(i);
@@ -236,13 +237,13 @@ public class P2PHolePuncher {
                         // Hedef peer'ın external IP'sini tahmin et (aynı subnet varsay)
                         InetSocketAddress targetAddr = new InetSocketAddress("192.168.1.100", targetPort); // TODO: Real IP detection
                         
-                        // BURST: Her port için 3 paket gönder (NAT hole punch için)
-                        for (int burst = 0; burst < BURST_PACKET_COUNT; burst++) {
+                        // AGGRESSIVE BURST: Her port için 5 paket gönder (NAT hole punch için)
+                        for (int burst = 0; burst < 5; burst++) {
                             ByteBuffer hello = createP2PHelloPacket(ClientMenu.myUsername, targetUsername);
                             dc.send(hello, targetAddr);
                         }
                         
-                        System.out.printf("📤 Sent %d P2P HELLO bursts to %s%n", BURST_PACKET_COUNT, targetAddr);
+                        System.out.printf("📤 Sent 5 P2P HELLO bursts to %s%n", targetAddr);
                     }
                     lastSend = System.currentTimeMillis();
                 }

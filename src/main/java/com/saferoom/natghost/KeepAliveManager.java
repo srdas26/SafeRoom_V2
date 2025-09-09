@@ -36,15 +36,11 @@ public final class KeepAliveManager implements AutoCloseable {
             AtomicLong seq = new AtomicLong();
             return exec.scheduleAtFixedRate(() -> {
                 try {
-                    // BURST: 2 keepalive paketi gönder (NAT mapping stability için)
-                    for (int burst = 0; burst < 2; burst++) {
-                        ByteBuffer pkt = LLS.New_KeepAlive_Packet();
-                        int sent = localChannel.send(pkt, remote);
-                        if (burst == 0) { // Sadece ilk burst'ü logla
-                            System.out.printf("[KA] #%d  %d -> %d  (%d bytes x2 burst)\n",
-                                    seq.getAndIncrement(), localPort, remotePort, sent);
-                        }
-                    }
+                    // Normal keepalive - tek paket (burst gereksiz)
+                    ByteBuffer pkt = LLS.New_KeepAlive_Packet();
+                    int sent = localChannel.send(pkt, remote);
+                    System.out.printf("[KA] #%d  %d -> %d  (%d bytes)\n",
+                            seq.getAndIncrement(), localPort, remotePort, sent);
                 } catch (IOException e) {
                     System.err.println("[KeepAliveManager] send error (" + key + "): " + e);
                 }
