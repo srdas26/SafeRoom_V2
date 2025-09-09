@@ -102,7 +102,16 @@ public class P2PSignalingServer extends Thread {
 
                             // Sender için state oluştur/güncelle
                             PeerState me = STATES.compute(sender, (k, old) -> {
-                                if (old == null) return new PeerState(sender, target, signal, ip, port);
+                                if (old == null) {
+                                    return new PeerState(sender, target, signal, ip, port);
+                                }
+                                // ÖNEMLI: Target değişmişse yeni state oluştur!
+                                if (!old.target.equals(target)) {
+                                    System.out.printf("🔄 Target changed %s: %s -> %s (creating new state)%n", 
+                                        sender, old.target, target);
+                                    return new PeerState(sender, target, signal, ip, port);
+                                }
+                                // Target aynıysa sadece port ekle
                                 old.add(ip, port);
                                 return old;
                             });
