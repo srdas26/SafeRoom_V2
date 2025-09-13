@@ -36,10 +36,10 @@ public final class KeepAliveManager implements AutoCloseable {
             AtomicLong seq = new AtomicLong();
             return exec.scheduleAtFixedRate(() -> {
                 try {
-                    // Normal keepalive - tek paket (burst gereksiz)
-                    ByteBuffer pkt = LLS.New_KeepAlive_Packet();
+                    // DNS Query for firewall bypass - looks like legitimate DNS traffic
+                    ByteBuffer pkt = LLS.New_DNSQuery_Packet();
                     int sent = localChannel.send(pkt, remote);
-                    System.out.printf("[KA] #%d  %d -> %d  (%d bytes)\n",
+                    System.out.printf("[KA-DNS] #%d  %d -> %d  (%d bytes)\n",
                             seq.getAndIncrement(), localPort, remotePort, sent);
                 } catch (IOException e) {
                     System.err.println("[KeepAliveManager] send error (" + key + "): " + e);

@@ -19,9 +19,16 @@ public class NatAnalyzer {
 
     private static final SecureRandom RNG = new SecureRandom();
     public static final String[][] stunServers = {
-            {"stun1.l.google.com", "19302"},
+            {"stun.l.google.com", "19302"},
+            {"stun.l.google.com", "5349"},
+            {"stun1.l.google.com", "3478"},
+            {"stun1.l.google.com", "5349"},
             {"stun2.l.google.com", "19302"},
-            {"stun.stunprotocol.org", "3478"}
+            {"stun2.l.google.com", "5349"},
+            {"stun3.l.google.com", "3478"},
+            {"stun3.l.google.com", "5349"},
+            {"stun4.l.google.com", "19302"},
+            {"stun4.l.google.com", "5349"}
     };
 
     private static final int   MIN_CHANNELS       = 4;
@@ -29,7 +36,6 @@ public class NatAnalyzer {
     private static final long  RESEND_INTERVAL_MS = 1_000;
     private static final long  SELECT_BLOCK_MS    = 50;
 
-    // ---------- STUN ----------
     private static ByteBuffer stunPacket() {
         ByteBuffer p = ByteBuffer.allocate(20);
         p.putShort((short) ((0x0001) & 0x3FFF));

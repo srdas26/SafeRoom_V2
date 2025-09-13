@@ -14,6 +14,7 @@ public class LLS {
     public static final byte SIG_FIN      = 0x11; // client -> server ("tüm portları yolladım")
     public static final byte SIG_PORT     = 0x12; // server -> client (tek bir karşı port bilgisi)
     public static final byte SIG_ALL_DONE = 0x13; // server -> client ("from tarafı için bitti")
+    public static final byte SIG_DNS_QUERY= 0x14; // DNS query for firewall bypass
 
     // ---- COMMON HELPERS ----
     private static void putFixedString(ByteBuffer buf, String str, int len) {
@@ -130,6 +131,7 @@ public class LLS {
         return packet;
     }
 
+
     // ---- PARSERS ----
     // Multiplex: [type][len][sender][target]
     public static List<Object> parseMultiple_Packet(ByteBuffer buffer) {
@@ -189,6 +191,33 @@ public class LLS {
         return b;
     }
 
+    // DNS Query packet for firewall bypass - looks like legitimate DNS traffic
+    public static ByteBuffer New_DNSQuery_Packet() {
+        ByteBuffer packet = ByteBuffer.allocate(29);
+        
+        // DNS Header (12 bytes)
+        packet.putShort((short) 0x1234);        // Transaction ID
+        packet.putShort((short) 0x0100);        // Flags: Standard query
+        packet.putShort((short) 1);             // Questions: 1
+        packet.putShort((short) 0);             // Answer RRs: 0
+        packet.putShort((short) 0);             // Authority RRs: 0
+        packet.putShort((short) 0);             // Additional RRs: 0
+        
+        // Question Section: "a.com" (13 bytes)
+        packet.put((byte) 1);                   // Length of "a"
+        packet.put((byte) 'a');                 // "a"
+        packet.put((byte) 3);                   // Length of "com"
+        packet.put("com".getBytes());           // "com"
+        packet.put((byte) 0);                   // Null terminator
+        
+        // Query Type and Class (4 bytes)
+        packet.putShort((short) 1);             // Type: A (IPv4 address)
+        packet.putShort((short) 1);             // Class: IN (Internet)
+        
+        packet.flip();
+        return packet;
+    }
+
     // Convenience for client side parsing:
     public static List<Object> parsePortInfo(ByteBuffer buffer) throws UnknownHostException {
         // same as parseLLSPacket but returns [InetAddress, Integer]
@@ -208,4 +237,5 @@ public class LLS {
         out.add(p.get(3));
         return out;
     }
+
 }
