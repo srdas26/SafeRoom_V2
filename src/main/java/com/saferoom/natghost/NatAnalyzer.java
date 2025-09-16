@@ -256,11 +256,17 @@ public class NatAnalyzer {
         System.out.println("[P2P] My public endpoint: " + myPublicIP + ":" + myPublicPort);
         System.out.println("[P2P] Using SAME channel from STUN analysis (local port: " + localPort + ")");
         
-        // Step 2: Send hole punch request using SAME channel
-        ByteBuffer holeRequest = LLS.New_Hole_Packet(myUsername, targetUsername, 
-                                                     InetAddress.getByName(myPublicIP), myPublicPort);
+        // Get local IP address
+        InetSocketAddress localAddr = (InetSocketAddress) stunChannel.getLocalAddress();
+        InetAddress localIP = InetAddress.getLocalHost(); // Get actual local IP
+        System.out.println("[P2P] My local endpoint: " + localIP.getHostAddress() + ":" + localPort);
+        
+        // Step 2: Send extended hole punch request with both public and local info
+        ByteBuffer holeRequest = LLS.New_Extended_Hole_Packet(myUsername, targetUsername, 
+                                                             InetAddress.getByName(myPublicIP), myPublicPort,
+                                                             localIP, localPort);
         stunChannel.send(holeRequest, signalingServer);
-        System.out.println("[P2P] Hole punch request sent to signaling server using local port: " + localPort);
+        System.out.println("[P2P] Extended hole punch request sent (public + local) using local port: " + localPort);
         
         // Step 3: Wait for peer info from signaling server
         Selector peerSelector = Selector.open();

@@ -59,27 +59,42 @@ public class P2PSignalingServer extends Thread {
     private static final long CLEANUP_INTERVAL_MS = 30_000;
     private long lastCleanup = System.currentTimeMillis();
     
-    // Simple peer info for modern hole punching
+    // Enhanced peer info for same-NAT detection
     static class PeerInfo {
         final String username;
         final String targetUsername;
         final InetAddress publicIP;
         final int publicPort;
+        final InetAddress localIP;
+        final int localPort;
         final InetSocketAddress clientAddress; // Track where to send response
         final long timestamp;
         
-        PeerInfo(String username, String targetUsername, InetAddress publicIP, int publicPort, InetSocketAddress clientAddress) {
+        PeerInfo(String username, String targetUsername, InetAddress publicIP, int publicPort, 
+                InetAddress localIP, int localPort, InetSocketAddress clientAddress) {
             this.username = username;
             this.targetUsername = targetUsername;
             this.publicIP = publicIP;
             this.publicPort = publicPort;
+            this.localIP = localIP;
+            this.localPort = localPort;
             this.clientAddress = clientAddress;
             this.timestamp = System.currentTimeMillis();
         }
         
+        // Legacy constructor for backward compatibility
+        PeerInfo(String username, String targetUsername, InetAddress publicIP, int publicPort, InetSocketAddress clientAddress) {
+            this(username, targetUsername, publicIP, publicPort, null, 0, clientAddress);
+        }
+        
         @Override
         public String toString() {
-            return username + "->" + targetUsername + " (" + publicIP + ":" + publicPort + ")";
+            if (localIP != null) {
+                return username + "->" + targetUsername + " (public: " + publicIP + ":" + publicPort + 
+                       ", local: " + localIP + ":" + localPort + ")";
+            } else {
+                return username + "->" + targetUsername + " (public: " + publicIP + ":" + publicPort + ")";
+            }
         }
     }
     
@@ -89,19 +104,40 @@ public class P2PSignalingServer extends Thread {
      */
     private void handleHolePunchRequest(ByteBuffer buf, DatagramChannel channel, InetSocketAddress from) {
         try {
-            // Parse hole punch packet
-            List<Object> parsed = LLS.parseLLSPacket(buf);
-            String sender = (String) parsed.get(2);
-            String target = (String) parsed.get(3);
-            InetAddress publicIP = (InetAddress) parsed.get(4);
-            int publicPort = (Integer) parsed.get(5);
+            // Check packet length to determine if it's extended
+            short len = LLS.peekLen(buf);
+            List<Object> parsed;
             
-            System.out.printf("🎯 HOLE_PUNCH: %s -> %s (public: %s:%d)%n", 
-                sender, target, publicIP.getHostAddress(), publicPort);
+            String sender, target;
+            InetAddress publicIP, localIP = null;
+            int publicPort, localPort = 0;
+            
+            if (len == 59) { // Extended packet with local IP/port
+                parsed = LLS.parseExtendedHolePacket(buf);
+                sender = (String) parsed.get(2);
+                target = (String) parsed.get(3);
+                publicIP = (InetAddress) parsed.get(4);
+                publicPort = (Integer) parsed.get(5);
+                localIP = (InetAddress) parsed.get(6);
+                localPort = (Integer) parsed.get(7);
+                
+                System.out.printf("🎯 EXTENDED_HOLE_PUNCH: %s -> %s%n", sender, target);
+                System.out.printf("   Public: %s:%d, Local: %s:%d%n", 
+                    publicIP.getHostAddress(), publicPort, localIP.getHostAddress(), localPort);
+            } else { // Standard packet
+                parsed = LLS.parseLLSPacket(buf);
+                sender = (String) parsed.get(2);
+                target = (String) parsed.get(3);
+                publicIP = (InetAddress) parsed.get(4);
+                publicPort = (Integer) parsed.get(5);
+                
+                System.out.printf("🎯 HOLE_PUNCH: %s -> %s (public: %s:%d)%n", 
+                    sender, target, publicIP.getHostAddress(), publicPort);
+            }
             
             // Store this peer's info with client address
             String senderKey = sender + "->" + target;
-            PeerInfo senderInfo = new PeerInfo(sender, target, publicIP, publicPort, from);
+            PeerInfo senderInfo = new PeerInfo(sender, target, publicIP, publicPort, localIP, localPort, from);
             PEER_REQUESTS.put(senderKey, senderInfo);
             
             // Check if target is also waiting for this sender
@@ -112,23 +148,49 @@ public class P2PSignalingServer extends Thread {
                 // MATCH FOUND! Both peers are ready for hole punching
                 System.out.printf("✅ PEER MATCH: %s <-> %s%n", sender, target);
                 
-                // Send target's info to sender
-                ByteBuffer targetInfoPacket = LLS.New_PortInfo_Packet(
-                    target, sender, LLS.SIG_PORT, 
-                    targetInfo.publicIP, targetInfo.publicPort
-                );
-                channel.send(targetInfoPacket, from);
-                System.out.printf("📤 Sent %s's info (%s:%d) to %s%n", 
-                    target, targetInfo.publicIP.getHostAddress(), targetInfo.publicPort, sender);
+                // Check if same NAT (same public IP)
+                boolean sameNAT = senderInfo.publicIP.equals(targetInfo.publicIP);
+                System.out.printf("🔍 Same NAT detection: %s (sender: %s, target: %s)%n", 
+                    sameNAT ? "YES - using local IPs" : "NO - using public IPs",
+                    senderInfo.publicIP.getHostAddress(), targetInfo.publicIP.getHostAddress());
                 
-                // Send sender's info to target
-                ByteBuffer senderInfoPacket = LLS.New_PortInfo_Packet(
-                    sender, target, LLS.SIG_PORT,
-                    senderInfo.publicIP, senderInfo.publicPort
-                );
-                channel.send(senderInfoPacket, targetInfo.clientAddress);
-                System.out.printf("📤 Sent %s's info (%s:%d) to %s%n", 
-                    sender, senderInfo.publicIP.getHostAddress(), senderInfo.publicPort, target);
+                if (sameNAT && senderInfo.localIP != null && targetInfo.localIP != null) {
+                    // Use local IPs for same-NAT communication
+                    ByteBuffer targetInfoPacket = LLS.New_PortInfo_Packet(
+                        target, sender, LLS.SIG_PORT, 
+                        targetInfo.localIP, targetInfo.localPort
+                    );
+                    channel.send(targetInfoPacket, from);
+                    System.out.printf("📤 Sent %s's LOCAL info (%s:%d) to %s%n", 
+                        target, targetInfo.localIP.getHostAddress(), targetInfo.localPort, sender);
+                    
+                    // Send sender's local info to target
+                    ByteBuffer senderInfoPacket = LLS.New_PortInfo_Packet(
+                        sender, target, LLS.SIG_PORT,
+                        senderInfo.localIP, senderInfo.localPort
+                    );
+                    channel.send(senderInfoPacket, targetInfo.clientAddress);
+                    System.out.printf("📤 Sent %s's LOCAL info (%s:%d) to %s%n", 
+                        sender, senderInfo.localIP.getHostAddress(), senderInfo.localPort, target);
+                } else {
+                    // Use public IPs for different NATs
+                    ByteBuffer targetInfoPacket = LLS.New_PortInfo_Packet(
+                        target, sender, LLS.SIG_PORT, 
+                        targetInfo.publicIP, targetInfo.publicPort
+                    );
+                    channel.send(targetInfoPacket, from);
+                    System.out.printf("📤 Sent %s's PUBLIC info (%s:%d) to %s%n", 
+                        target, targetInfo.publicIP.getHostAddress(), targetInfo.publicPort, sender);
+                    
+                    // Send sender's public info to target
+                    ByteBuffer senderInfoPacket = LLS.New_PortInfo_Packet(
+                        sender, target, LLS.SIG_PORT,
+                        senderInfo.publicIP, senderInfo.publicPort
+                    );
+                    channel.send(senderInfoPacket, targetInfo.clientAddress);
+                    System.out.printf("📤 Sent %s's PUBLIC info (%s:%d) to %s%n", 
+                        sender, senderInfo.publicIP.getHostAddress(), senderInfo.publicPort, target);
+                }
                 
                 // Clean up the matched pair
                 PEER_REQUESTS.remove(senderKey);

@@ -43,6 +43,8 @@ public class LLS {
     private static final int MULTIPLEX_LEN = 43;
     // LLS packet with IP/Port: type(1) + len(2) + user(20) + target(20) + ip(4) + port(4) = 51
     private static final int LLS_LEN       = 51;
+    // Extended packet: type(1) + len(2) + user(20) + target(20) + publicIP(4) + publicPort(4) + localIP(4) + localPort(4) = 59
+    private static final int EXTENDED_LEN  = 59;
 
     // ---- QUICK CHECKS ----
     public static boolean hasWholeFrame(ByteBuffer bb) {
@@ -144,6 +146,23 @@ public class LLS {
         putFixedString(packet, target, 20);
         packet.put(publicIp.getAddress()); // 4 bytes
         packet.putInt(publicPort);          // 4 bytes
+        packet.flip();
+        return packet;
+    }
+    
+    // NEW: Extended hole punch packet - includes both public and local IP/port
+    public static ByteBuffer New_Extended_Hole_Packet(String username, String target,
+                                                      InetAddress publicIp, int publicPort,
+                                                      InetAddress localIp, int localPort) {
+        ByteBuffer packet = ByteBuffer.allocate(EXTENDED_LEN);
+        packet.put(SIG_HOLE);
+        packet.putShort((short) EXTENDED_LEN);
+        putFixedString(packet, username, 20);
+        putFixedString(packet, target, 20);
+        packet.put(publicIp.getAddress()); // 4 bytes - public IP
+        packet.putInt(publicPort);          // 4 bytes - public port
+        packet.put(localIp.getAddress());  // 4 bytes - local IP
+        packet.putInt(localPort);           // 4 bytes - local port
         packet.flip();
         return packet;
     }
@@ -323,6 +342,41 @@ public class LLS {
         parsed.add(messageId);
         
         return parsed; // [type, len, sender, receiver, messageId]
+    }
+    
+    // NEW: Parse extended hole punch packet with both public and local IP/port
+    public static List<Object> parseExtendedHolePacket(ByteBuffer buffer) throws UnknownHostException {
+        List<Object> parsed = new ArrayList<>(8);
+        
+        byte type = buffer.get();
+        short len = buffer.getShort();
+        parsed.add(type);
+        parsed.add(len);
+        
+        String sender = getFixedString(buffer, 20);
+        String target = getFixedString(buffer, 20);
+        parsed.add(sender);
+        parsed.add(target);
+        
+        // Public IP/Port
+        byte[] publicIpBytes = new byte[4];
+        buffer.get(publicIpBytes);
+        InetAddress publicIp = InetAddress.getByAddress(publicIpBytes);
+        parsed.add(publicIp);
+        
+        int publicPort = buffer.getInt();
+        parsed.add(publicPort);
+        
+        // Local IP/Port
+        byte[] localIpBytes = new byte[4];
+        buffer.get(localIpBytes);
+        InetAddress localIp = InetAddress.getByAddress(localIpBytes);
+        parsed.add(localIp);
+        
+        int localPort = buffer.getInt();
+        parsed.add(localPort);
+        
+        return parsed; // [type, len, sender, target, publicIP, publicPort, localIP, localPort]
     }
 
 }
