@@ -120,16 +120,29 @@ public class NatAnalyzer {
     }
     
     /**
-     * Get real local IP address (not localhost/loopback)
+     * Get real local IP address (not localhost/loopback/docker/vm)
      */
     private static InetAddress getRealLocalIP() throws Exception {
-        // Try to find non-loopback network interface
+        InetAddress bestCandidate = null;
+        
+        // Try to find the best network interface
         Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
         while (interfaces.hasMoreElements()) {
             NetworkInterface ni = interfaces.nextElement();
             
             // Skip loopback and inactive interfaces
             if (ni.isLoopback() || !ni.isUp()) continue;
+            
+            String ifName = ni.getName().toLowerCase();
+            String displayName = ni.getDisplayName().toLowerCase();
+            
+            // Skip Docker, VM, and virtual interfaces
+            if (ifName.contains("docker") || ifName.contains("veth") || ifName.contains("br-") ||
+                ifName.contains("virbr") || ifName.contains("vmnet") || ifName.contains("vbox") ||
+                displayName.contains("docker") || displayName.contains("virtual")) {
+                System.out.printf("[NAT] Skipping virtual interface: %s (%s)%n", ifName, displayName);
+                continue;
+            }
             
             Enumeration<InetAddress> addresses = ni.getInetAddresses();
             while (addresses.hasMoreElements()) {
@@ -138,11 +151,35 @@ public class NatAnalyzer {
                 // Skip IPv6 and loopback addresses
                 if (addr instanceof Inet6Address || addr.isLoopbackAddress()) continue;
                 
-                // Found a real IPv4 address
-                System.out.printf("[NAT] Found real local IP: %s (interface: %s)%n", 
-                    addr.getHostAddress(), ni.getDisplayName());
-                return addr;
+                String ip = addr.getHostAddress();
+                
+                // Skip Docker/VM networks
+                if (ip.startsWith("172.17.") || ip.startsWith("172.18.") || ip.startsWith("172.19.") ||
+                    ip.startsWith("172.20.") || ip.startsWith("10.0.2.") || ip.startsWith("169.254.")) {
+                    System.out.printf("[NAT] Skipping virtual network IP: %s%n", ip);
+                    continue;
+                }
+                
+                // Prefer 192.168.x.x (home networks) or 10.x.x.x (corporate)
+                if (ip.startsWith("192.168.") || ip.startsWith("10.")) {
+                    System.out.printf("[NAT] ✅ Found preferred local IP: %s (interface: %s)%n", 
+                        ip, ni.getDisplayName());
+                    return addr;
+                }
+                
+                // Keep as backup candidate
+                if (bestCandidate == null) {
+                    bestCandidate = addr;
+                    System.out.printf("[NAT] Found candidate local IP: %s (interface: %s)%n", 
+                        ip, ni.getDisplayName());
+                }
             }
+        }
+        
+        // Use best candidate if found
+        if (bestCandidate != null) {
+            System.out.printf("[NAT] Using candidate local IP: %s%n", bestCandidate.getHostAddress());
+            return bestCandidate;
         }
         
         // Fallback to localhost if nothing found
