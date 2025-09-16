@@ -1257,7 +1257,7 @@ public class DBManager {
     public static boolean updateHeartbeat(String username, String sessionId) throws SQLException {
         // First ensure user exists in users table (quick fix for foreign key constraint)
         String checkUserQuery = "SELECT COUNT(*) FROM users WHERE username = ?";
-        String insertUserQuery = "INSERT IGNORE INTO users (username, email, password) VALUES (?, ?, 'temp')";
+        String insertUserQuery = "INSERT IGNORE INTO users (username, email, password_hash, salt) VALUES (?, ?, 'temp_hash', 'temp_salt')";
         
         String sessionQuery = """
             INSERT INTO user_sessions (username, session_id, last_heartbeat) 

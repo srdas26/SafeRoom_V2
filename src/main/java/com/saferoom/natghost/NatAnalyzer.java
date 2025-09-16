@@ -71,9 +71,9 @@ public class NatAnalyzer {
             short attrLen = buffer.getShort();
             System.out.printf("[STUN] Attribute: type=0x%04X, len=%d%n", attrType, attrLen);
             
-            if (attrType == 0x0001) { // MAPPED-ADDRESS
+            if (attrType == 0x0001 || attrType == 0x0020) { // MAPPED-ADDRESS or XOR-MAPPED-ADDRESS
                 if (buffer.remaining() < attrLen) {
-                    System.err.println("[STUN] Not enough bytes for MAPPED-ADDRESS");
+                    System.err.printf("[STUN] Not enough bytes for attribute 0x%04X%n", attrType);
                     break;
                 }
                 buffer.get(); // ignore
@@ -81,11 +81,22 @@ public class NatAnalyzer {
                 int port = buffer.getShort() & 0xFFFF;
                 byte[] addrBytes = new byte[4];
                 buffer.get(addrBytes);
+                
+                if (attrType == 0x0020) { // XOR-MAPPED-ADDRESS - need to XOR with magic cookie
+                    // XOR port with upper 16 bits of magic cookie (0x2112)
+                    port ^= 0x2112;
+                    // XOR IP with magic cookie (0x2112A442)
+                    int magicCookie = 0x2112A442;
+                    for (int i = 0; i < 4; i++) {
+                        addrBytes[i] ^= (magicCookie >> (24 - i * 8)) & 0xFF;
+                    }
+                }
+                
                 String ip = (addrBytes[0] & 0xFF) + "." + (addrBytes[1] & 0xFF) + "." +
                             (addrBytes[2] & 0xFF) + "." + (addrBytes[3] & 0xFF);
                 myPublicIP = ip;
                 list.add(port);
-                System.out.printf("[STUN] ✅ Parsed: IP=%s, Port=%d%n", ip, port);
+                System.out.printf("[STUN] ✅ Parsed (type=0x%04X): IP=%s, Port=%d%n", attrType, ip, port);
             } else {
                 // Skip unknown attributes
                 if (buffer.remaining() >= attrLen) {
@@ -115,9 +126,13 @@ public class NatAnalyzer {
     public static byte analyzeSinglePort(String[][] servers) throws Exception {
         System.out.println("[NAT] Starting single-port NAT analysis...");
         
-        // Close previous channel if exists
+        // Close previous channel if exists and create new one
         if (stunChannel != null) {
-            try { stunChannel.close(); } catch (Exception ignored) {}
+            try { 
+                stunChannel.close(); 
+                System.out.println("[NAT] Closed previous STUN channel");
+            } catch (Exception ignored) {}
+            stunChannel = null;
         }
         
         Selector selector = Selector.open();
@@ -170,8 +185,18 @@ public class NatAnalyzer {
                 if (from == null) continue;
                 
                 recv.flip();
+                System.out.printf("[NAT] STUN response received from %s, buffer size: %d%n", from, recv.remaining());
+                
+                // Debug: Show first few bytes of response
+                if (recv.remaining() >= 20) {
+                    recv.mark();
+                    System.out.printf("[NAT] STUN header: %02X %02X %02X %02X%n", 
+                        recv.get(), recv.get(), recv.get(), recv.get());
+                    recv.reset();
+                }
+                
                 parseStunResponse(recv, Public_PortList);
-                System.out.println("[NAT] STUN response received from " + from);
+                System.out.printf("[NAT] After parsing - Public_PortList size: %d%n", Public_PortList.size());
             }
         }
 

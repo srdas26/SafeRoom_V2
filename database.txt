@@ -141,3 +141,18 @@ VALUES
 ('abkarada', 'room_joined', 'Joined room "Development Team"', '{"room_name": "Development Team"}'),
 ('abkarada', 'message_sent', 'Sent message in Development Team', '{"room": "Development Team", "message_length": 45}');
 
+-- ===============================
+-- HEARTBEAT & SESSION MANAGEMENT
+-- ===============================
+
+-- User sessions table for heartbeat tracking
+CREATE TABLE IF NOT EXISTS user_sessions (
+    username VARCHAR(50) NOT NULL,
+    session_id VARCHAR(255) NOT NULL,
+    last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (username, session_id),
+    FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+    INDEX idx_last_heartbeat (last_heartbeat)
+);
+
