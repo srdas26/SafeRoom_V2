@@ -104,10 +104,8 @@ public class MessagesController {
                         com.saferoom.gui.service.ChatService chatService = 
                             com.saferoom.gui.service.ChatService.getInstance();
                         
-                        // Create a system user for notification
-                        com.saferoom.gui.model.User systemUser = new com.saferoom.gui.model.User();
-                        systemUser.setId("system");
-                        systemUser.setName("System");
+                        // Create a system user for notification (using proper constructor)
+                        com.saferoom.gui.model.User systemUser = new com.saferoom.gui.model.User("system", "System");
                         
                         // Send notification message
                         chatService.sendMessage(username, notificationMessage, systemUser);
