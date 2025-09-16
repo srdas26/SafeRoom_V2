@@ -212,8 +212,10 @@ public class P2PSignalingServer extends Thread {
                 );
             }
             
+            System.out.printf("🔔 Sending P2P notification to %s at %s (packet size: %d)%n", 
+                target, targetUser.clientAddress, notificationPacket.remaining());
             channel.send(notificationPacket, targetUser.clientAddress);
-            System.out.printf("📤 Sent P2P notification to %s about %s's request%n", target, requester);
+            System.out.printf("📤 P2P notification sent to %s about %s's request%n", target, requester);
             
             System.out.printf("🎉 Unidirectional P2P initiation complete for %s -> %s%n", requester, target);
             

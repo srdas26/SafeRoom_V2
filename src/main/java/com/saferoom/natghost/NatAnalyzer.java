@@ -573,6 +573,13 @@ public class NatAnalyzer {
                 return false;
             }
             
+            // CRITICAL: Start listening for incoming P2P notifications after registration
+            System.out.println("[P2P] 🎧 Starting notification listener after registration...");
+            KeepAliveManager keepAlive = new KeepAliveManager(3_000);
+            keepAlive.installShutdownHook();
+            keepAlive.startMessageListening(stunChannel);
+            System.out.println("[P2P] 📡 Notification listener active - ready for incoming P2P requests");
+            
             System.out.println("[P2P] ✅ User registration complete: " + username);
             return true;
             
@@ -671,6 +678,8 @@ public class NatAnalyzer {
      */
     public static void handleIncomingP2PNotification(ByteBuffer buf, SocketAddress from) {
         try {
+            System.out.printf("[P2P] 🔔 INCOMING P2P NOTIFICATION from %s (buffer size: %d)%n", from, buf.remaining());
+            
             List<Object> parsed = LLS.parseP2PNotifyPacket(buf);
             String requester = (String) parsed.get(2);
             String target = (String) parsed.get(3);
@@ -679,7 +688,7 @@ public class NatAnalyzer {
             InetAddress requesterLocalIP = (InetAddress) parsed.get(6);
             int requesterLocalPort = (Integer) parsed.get(7);
             
-            System.out.printf("[P2P] 📢 P2P notification: %s wants to connect to %s%n", requester, target);
+            System.out.printf("[P2P] 📢 P2P NOTIFICATION PARSED: %s wants to connect to %s%n", requester, target);
             System.out.printf("[P2P] Requester info - Public: %s:%d, Local: %s:%d%n", 
                 requesterPublicIP.getHostAddress(), requesterPublicPort,
                 requesterLocalIP.getHostAddress(), requesterLocalPort);
