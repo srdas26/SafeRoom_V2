@@ -64,7 +64,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'com.saferoom.voice_engine.FullDuplexAudio'
+    mainClass = 'com.saferoom.voice_engine.UDPAudio'
 }
 
 protobuf {
@@ -127,6 +127,13 @@ task testAudio(type: JavaExec) {
 task udpAudio(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.saferoom.voice_engine.UDPAudio'
+    jvmArgs = ['-Djava.library.path=/usr/lib/x86_64-linux-gnu']
+}
+
+// Safe SRT Audio task
+task safeSRT(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.saferoom.voice_engine.SafeSRTAudio'
     jvmArgs = ['-Djava.library.path=/usr/lib/x86_64-linux-gnu']
 }
 
