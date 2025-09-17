@@ -6,9 +6,9 @@ import org.freedesktop.gstreamer.*;
 public class FullDuplexAudio {
 
   // sadece bunları doldur (CLI'dan da alabiliyorum)
-  private static String PEER_IP  = "192.168.1.38";
-  private static int    PEER_PORT         = 7000;   // karşı tarafın dinlediği SRT portu
-  private static int    MY_LISTENING_PORT = 7001;  // bu tarafın dinlediği SRT portu
+  private static String PEER_IP  = "192.168.1.29";
+  private static int    PEER_PORT         = 7001;   // karşı tarafın dinlediği SRT portu
+  private static int    MY_LISTENING_PORT = 7000;  // bu tarafın dinlediği SRT portu
 
   // makul varsayılanlar
   private static int DEFAULT_BITRATE   = 64000; // Opus
@@ -62,26 +62,19 @@ public class FullDuplexAudio {
       return;
     }
     
-    try {
-      pay.set("pt", 96);
-    } catch (Exception e) {
-      System.err.println("Failed to configure RTP payloader: " + e.getMessage());
-      return;
-    }
-
     // SSRC rastgele; çakışma riskini azalt
     int mySsrc = new Random().nextInt() & 0x7fffffff;
-    Element rtpPay = createElementSafely("rtpstreampay", "rtpstreampay");
     Element qtx   = createElementSafely("queue", "qtx");
     Element srtOut = createElementSafely("srtclientsink", "srtclientsink");
     
-    if (rtpPay == null || qtx == null || srtOut == null) {
+    if (qtx == null || srtOut == null) {
       System.err.println("Failed to create TX pipeline elements");
       return;
     }
     
     try {
-      rtpPay.set("ssrc", mySsrc);
+      pay.set("pt", 96);
+      pay.set("ssrc", mySsrc);  // rtpopuspay supports ssrc property
       // tek konfigurasyonla gönder: karşı tarafın dinlediği port
       srtOut.set("uri", "srt://" + PEER_IP + ":" + PEER_PORT + "?mode=caller&latency=" + DEFAULT_LATENCYMS);
     } catch (Exception e) {
@@ -160,14 +153,14 @@ public class FullDuplexAudio {
     Pipeline p = new Pipeline("opus-over-srt-full-duplex");
     p.addMany(
       // TX
-      mic, aconv, ares, enc, pay, rtpPay, qtx, srtOut,
+      mic, aconv, ares, enc, pay, qtx, srtOut,
       // RX
       srtIn, depayStream, capsFilter, jitter, depay, dec, arx1, arx2, qrx, out
     );
 
     // linkler
     try {
-      if (!Element.linkMany(mic, aconv, ares, enc, pay, rtpPay, qtx, srtOut)) {
+      if (!Element.linkMany(mic, aconv, ares, enc, pay, qtx, srtOut)) {
         System.err.println("Failed to link TX elements");
         return;
       }
