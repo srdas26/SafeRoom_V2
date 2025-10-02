@@ -756,19 +756,15 @@ public class DBManager {
 			}
 		}
 		
-		// Friend check
-		String friendQuery = "SELECT 1 FROM friendships WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)";
-		try (Connection conn = getConnection();
-			 PreparedStatement stmt = conn.prepareStatement(friendQuery)) {
-			String minUser = user1.compareTo(user2) < 0 ? user1 : user2;
-			String maxUser = user1.compareTo(user2) < 0 ? user2 : user1;
-			
-			stmt.setString(1, minUser);
-			stmt.setString(2, maxUser);
-			stmt.setString(3, minUser);
-			stmt.setString(4, maxUser);
-			
-			if (stmt.executeQuery().next()) {
+        // Friend check - CHECK constraint nedeniyle sadece user1 < user2 formatında arama
+        String friendQuery = "SELECT 1 FROM friendships WHERE user1 = ? AND user2 = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(friendQuery)) {
+            String minUser = user1.compareTo(user2) < 0 ? user1 : user2;
+            String maxUser = user1.compareTo(user2) < 0 ? user2 : user1;
+            
+            stmt.setString(1, minUser);
+            stmt.setString(2, maxUser);			if (stmt.executeQuery().next()) {
 				return "friends";
 			}
 		}
@@ -1037,9 +1033,13 @@ public class DBManager {
                     stmt.executeUpdate();
                 }
                 
-                // Arkadaşlık kaydı oluştur (alfabetik sıralama ile)
+                // Arkadaşlık kaydı oluştur (alfabetik sıralama ile - CHECK constraint için)
                 String user1 = sender.compareTo(receiver) < 0 ? sender : receiver;
                 String user2 = sender.compareTo(receiver) < 0 ? receiver : sender;
+                
+                System.out.println("🔍 DEBUG: sender=" + sender + ", receiver=" + receiver);
+                System.out.println("🔍 DEBUG: user1=" + user1 + ", user2=" + user2);
+                System.out.println("🔍 DEBUG: user1 < user2? " + (user1.compareTo(user2) < 0));
                 
                 try (PreparedStatement stmt = conn.prepareStatement(insertFriendshipQuery)) {
                     stmt.setString(1, user1);
@@ -1187,8 +1187,12 @@ public class DBManager {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(deleteQuery)) {
             
+            // Alfabetik sıralama - CHECK constraint için
             String minUser = user1.compareTo(user2) < 0 ? user1 : user2;
             String maxUser = user1.compareTo(user2) < 0 ? user2 : user1;
+            
+            System.out.println("🔍 DEBUG removeFriend: user1=" + user1 + ", user2=" + user2);
+            System.out.println("🔍 DEBUG removeFriend: minUser=" + minUser + ", maxUser=" + maxUser);
             
             stmt.setString(1, minUser);
             stmt.setString(2, maxUser);
