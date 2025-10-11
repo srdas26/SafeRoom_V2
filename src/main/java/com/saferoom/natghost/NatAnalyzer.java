@@ -1652,7 +1652,8 @@ public class NatAnalyzer {
     
     /**
      * Executes standard hole punch (for non-symmetric ↔ non-symmetric).
-     * Sends multiple packets to establish NAT mapping.
+     * Sends multiple packets to establish NAT mapping and listens for peer response.
+     * Uses continuous burst until peer response or timeout (30 seconds).
      */
     private static void executeStandardHolePunch(InetAddress targetIP, int targetPort, String targetUsername) {
         try {
@@ -1662,24 +1663,70 @@ public class NatAnalyzer {
             }
             
             InetSocketAddress targetAddr = new InetSocketAddress(targetIP, targetPort);
-            System.out.printf("[STANDARD-PUNCH] 📤 Sending hole punch packets to %s%n", targetAddr);
+            System.out.printf("[STANDARD-PUNCH] 📤 Starting continuous burst to %s%n", targetAddr);
+            System.out.println("[STANDARD-PUNCH] Will burst until peer response or 30s timeout");
             
-            // Send 10 packets over 1 second to establish mapping
-            for (int i = 0; i < 10; i++) {
-                ByteBuffer payload = ByteBuffer.allocate(64);
-                payload.put(LLS.SIG_HOLE);
-                payload.put(("PUNCH-" + i).getBytes());
-                payload.flip();
+            // Configure channel for non-blocking
+            stunChannel.configureBlocking(false);
+            Selector selector = Selector.open();
+            stunChannel.register(selector, SelectionKey.OP_READ);
+            
+            long startTime = System.currentTimeMillis();
+            long timeout = 30000; // 30 seconds timeout
+            boolean peerResponseReceived = false;
+            int burstCount = 0;
+            
+            // Continuous burst with response listening
+            while (!peerResponseReceived && (System.currentTimeMillis() - startTime) < timeout) {
+                // Send burst packet
+                ByteBuffer burstPayload = ByteBuffer.allocate(128);
+                burstPayload.put(LLS.SIG_HOLE);
+                burstPayload.put(("STANDARD-BURST-" + burstCount).getBytes());
+                burstPayload.flip();
                 
-                stunChannel.send(payload, targetAddr);
-                Thread.sleep(100); // 100ms interval
+                stunChannel.send(burstPayload, targetAddr);
+                burstCount++;
+                
+                // Check for peer response (non-blocking)
+                if (selector.select(50) > 0) { // 50ms wait
+                    selector.selectedKeys().clear();
+                    
+                    ByteBuffer receiveBuffer = ByteBuffer.allocate(1024);
+                    InetSocketAddress sender = (InetSocketAddress) stunChannel.receive(receiveBuffer);
+                    
+                    if (sender != null) {
+                        long responseTime = System.currentTimeMillis() - startTime;
+                        System.out.printf("\n[STANDARD-PUNCH] ✅ Peer response received after %d ms!%n", responseTime);
+                        System.out.printf("  Peer address: %s%n", sender);
+                        System.out.printf("  Total bursts sent: %d%n", burstCount);
+                        
+                        peerResponseReceived = true;
+                        
+                        // Register peer
+                        activePeers.put(targetUsername, sender);
+                        lastActivity.put(targetUsername, System.currentTimeMillis());
+                        
+                        System.out.println("[STANDARD-PUNCH] 💓 Starting keep-alive mechanism");
+                        startKeepAlive(stunChannel, sender, targetUsername);
+                        break;
+                    }
+                }
+                
+                // Progress logging every 5 seconds
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (burstCount % 100 == 0 && burstCount > 0) {
+                    System.out.printf("[STANDARD-PUNCH] Still bursting... %d packets sent (%.1f seconds)%n", 
+                        burstCount, elapsed / 1000.0);
+                }
             }
             
-            System.out.println("[STANDARD-PUNCH] ✅ Standard hole punch complete");
+            selector.close();
             
-            // Register peer for incoming messages
-            activePeers.put(targetUsername, targetAddr);
-            lastActivity.put(targetUsername, System.currentTimeMillis());
+            if (!peerResponseReceived) {
+                System.err.println("\n[STANDARD-PUNCH] ❌ TIMEOUT: No peer response after 30 seconds");
+                System.err.printf("  Total bursts sent: %d%n", burstCount);
+                System.err.println("  Check Wireshark to verify UDP packets are being sent");
+            }
             
         } catch (Exception e) {
             System.err.println("[STANDARD-PUNCH] ❌ Failed: " + e.getMessage());

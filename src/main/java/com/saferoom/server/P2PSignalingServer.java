@@ -227,22 +227,36 @@ public class P2PSignalingServer extends Thread {
                 targetUser.publicIP.getHostAddress());
             
             if (sameNAT && requesterUser.localIP != null && targetUser.localIP != null) {
-                // Same LAN - send local addresses directly (no intelligent coordination needed)
-                System.out.println("🏠 SAME LAN detected - bypassing NAT strategies, using local ports");
+                // Same LAN - use local addresses with STANDARD hole punch strategy
+                System.out.println("🏠 SAME LAN detected - using local IPs with STANDARD burst strategy");
                 
-                ByteBuffer requesterInfo = LLS.New_PortInfo_Packet(
-                    targetUser.username, requesterUser.username, LLS.SIG_PORT,
-                    targetUser.localIP, targetUser.localPort
+                // Send STANDARD punch instruction to requester (burst to target's LOCAL address)
+                byte[] requesterInstruction = LLS.createPunchInstructPacket(
+                    requesterUser.username,
+                    targetUser.username,
+                    targetUser.localIP,      // Use LOCAL IP
+                    targetUser.localPort,    // Use LOCAL port
+                    (byte) 0x00,             // STANDARD strategy
+                    1                        // numPorts (not used for standard)
                 );
-                channel.send(requesterInfo, new InetSocketAddress(requesterUser.publicIP, requesterUser.publicPort));
+                channel.send(ByteBuffer.wrap(requesterInstruction), 
+                    new InetSocketAddress(requesterUser.publicIP, requesterUser.publicPort));
                 
-                ByteBuffer targetInfo = LLS.New_PortInfo_Packet(
-                    requesterUser.username, targetUser.username, LLS.SIG_PORT,
-                    requesterUser.localIP, requesterUser.localPort
+                // Send STANDARD punch instruction to target (burst to requester's LOCAL address)
+                byte[] targetInstruction = LLS.createPunchInstructPacket(
+                    targetUser.username,
+                    requesterUser.username,
+                    requesterUser.localIP,   // Use LOCAL IP
+                    requesterUser.localPort, // Use LOCAL port
+                    (byte) 0x00,             // STANDARD strategy
+                    1                        // numPorts (not used for standard)
                 );
-                channel.send(targetInfo, new InetSocketAddress(targetUser.publicIP, targetUser.publicPort));
+                channel.send(ByteBuffer.wrap(targetInstruction), 
+                    new InetSocketAddress(targetUser.publicIP, targetUser.publicPort));
                 
-                System.out.println("✅ Same LAN coordination complete - sent local addresses");
+                System.out.println("✅ Same LAN coordination complete - sent LOCAL addresses with STANDARD burst instructions");
+                System.out.printf("   Requester will burst to: %s:%d%n", targetUser.localIP.getHostAddress(), targetUser.localPort);
+                System.out.printf("   Target will burst to: %s:%d%n", requesterUser.localIP.getHostAddress(), requesterUser.localPort);
                 return;
             }
             
