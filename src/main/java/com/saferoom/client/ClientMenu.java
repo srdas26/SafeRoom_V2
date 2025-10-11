@@ -575,7 +575,7 @@ public class ClientMenu{
 		try {
 			System.out.println("[P2P] Registering user with server: " + username);
 			
-			InetSocketAddress signalingServer = new InetSocketAddress(Server, 45001); // P2PSignalingServer.SIGNALING_PORT
+			InetSocketAddress signalingServer = new InetSocketAddress(Server, UDP_Port); // P2PSignalingServer.SIGNALING_PORT
 			return NatAnalyzer.registerWithServer(username, signalingServer);
 			
 		} catch (Exception e) {
@@ -596,7 +596,7 @@ public class ClientMenu{
 			System.out.println("[P2P] Initiating UNIDIRECTIONAL P2P request: " + myUsername + " -> " + targetUsername);
 			
 			// Create signaling server address - use correct P2P signaling port
-			InetSocketAddress signalingServer = new InetSocketAddress(Server, 45001); // P2PSignalingServer.SIGNALING_PORT
+			InetSocketAddress signalingServer = new InetSocketAddress(Server, UDP_Port); // P2PSignalingServer.SIGNALING_PORT
 			
 			// Use new unidirectional P2P request system
 			boolean success = NatAnalyzer.requestP2PConnection(myUsername, targetUsername, signalingServer);
@@ -627,7 +627,7 @@ public class ClientMenu{
 			System.out.println("[P2P] Initiating LEGACY hole punch: " + myUsername + " -> " + targetUsername);
 			
 			// Create signaling server address - use correct P2P signaling port
-			InetSocketAddress signalingServer = new InetSocketAddress(Server, 45001); // P2PSignalingServer.SIGNALING_PORT
+			InetSocketAddress signalingServer = new InetSocketAddress(Server, UDP_Port); // P2PSignalingServer.SIGNALING_PORT
 			
 			// Perform hole punch using NatAnalyzer (old method)
 			boolean success = NatAnalyzer.performHolePunch(myUsername, targetUsername, signalingServer);
