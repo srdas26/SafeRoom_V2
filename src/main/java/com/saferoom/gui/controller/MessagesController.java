@@ -143,12 +143,19 @@ public class MessagesController {
             // New contact - add to service
             contactService.addNewContact(username);
             
-            // Find and select the newly added contact
-            Contact newContact = contactService.getContact(username);
-            if (newContact != null) {
-                contactListView.getSelectionModel().select(newContact);
-                System.out.printf("📱 Added and selected new contact: %s%n", username);
-            }
+            // CRITICAL FIX: Wait for JavaFX to process the ObservableList change
+            // before attempting selection. This prevents IndexOutOfBoundsException
+            // when ListView hasn't updated its internal state yet.
+            Platform.runLater(() -> {
+                // Find and select the newly added contact
+                Contact newContact = contactService.getContact(username);
+                if (newContact != null) {
+                    contactListView.getSelectionModel().select(newContact);
+                    System.out.printf("📱 Added and selected new contact: %s%n", username);
+                } else {
+                    System.err.printf("⚠️ Contact %s was added but not found in list%n", username);
+                }
+            });
         }
     }
     
