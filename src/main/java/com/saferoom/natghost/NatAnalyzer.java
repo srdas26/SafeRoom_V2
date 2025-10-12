@@ -574,14 +574,18 @@ public class NatAnalyzer {
             System.out.println("[P2P] Registration packet sent to server");
             
             // Step 3: Wait for acknowledgment from server
+            // CRITICAL: Ensure channel is non-blocking and properly registered
+            stunChannel.configureBlocking(false);
             Selector regSelector = Selector.open();
             stunChannel.register(regSelector, SelectionKey.OP_READ);
             
             long deadline = System.currentTimeMillis() + 5000; // 5 second timeout
             boolean ackReceived = false;
             
+            System.out.println("[P2P] ⏳ Waiting for registration ACK from server...");
+            
             while (System.currentTimeMillis() < deadline && !ackReceived) {
-                if (regSelector.select(100) == 0) continue;
+                if (regSelector.select(500) == 0) continue; // 500ms wait
                 
                 Iterator<SelectionKey> it = regSelector.selectedKeys().iterator();
                 while (it.hasNext()) {
@@ -596,13 +600,25 @@ public class NatAnalyzer {
                     if (from == null) continue;
                     
                     buf.flip();
-                    if (!LLS.hasWholeFrame(buf)) continue;
+                    
+                    System.out.printf("[P2P] 📦 Received packet during registration wait (size: %d, from: %s)%n", 
+                        buf.remaining(), from);
+                    
+                    if (!LLS.hasWholeFrame(buf)) {
+                        System.err.println("[P2P] ⚠️ Incomplete frame, skipping");
+                        continue;
+                    }
                     
                     byte type = LLS.peekType(buf);
+                    System.out.printf("[P2P] 📨 Packet type: 0x%02X%n", type);
+                    
                     if (type == LLS.SIG_ALL_DONE) {
                         ackReceived = true;
                         System.out.println("[P2P] ✅ Registration acknowledged by server");
                         break;
+                    } else {
+                        System.out.printf("[P2P] ⚠️ Unexpected packet type during registration: 0x%02X (expected SIG_ALL_DONE=0x%02X)%n", 
+                            type, LLS.SIG_ALL_DONE);
                     }
                 }
             }
@@ -796,6 +812,109 @@ public class NatAnalyzer {
             
         } catch (Exception e) {
             System.err.printf("[P2P] Error handling P2P notification from %s: %s%n", from, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Handle incoming punch instruction from server (target side).
+     * This is called when another peer initiates a P2P connection and the server
+     * sends intelligent punch instructions to BOTH peers simultaneously.
+     * 
+     * This method:
+     * 1. Parses the instruction (strategy, target address, numPorts)
+     * 2. Executes the coordinated strategy
+     * 3. Handles GUI updates (switch to Messages, open chat)
+     * 
+     * @param buf Buffer containing SIG_PUNCH_INSTRUCT packet
+     * @param from Server address that sent the instruction
+     */
+    public static void handleIncomingPunchInstruction(ByteBuffer buf, SocketAddress from) {
+        try {
+            System.out.printf("[P2P-INCOMING] 🧠 Received punch instruction from server %s%n", from);
+            
+            List<Object> parsed = LLS.parsePunchInstructPacket(buf);
+            String username = (String) parsed.get(2);
+            String target = (String) parsed.get(3);
+            InetAddress targetIP = (InetAddress) parsed.get(4);
+            int targetPort = (Integer) parsed.get(5);
+            byte strategy = (Byte) parsed.get(6);
+            int numPorts = (Integer) parsed.get(7);
+            
+            System.out.printf("[P2P-INCOMING] 📨 Punch instruction parsed:%n");
+            System.out.printf("  Requester: %s → Me: %s%n", target, username);
+            System.out.printf("  Requester IP: %s:%d%n", targetIP.getHostAddress(), targetPort);
+            System.out.printf("  Strategy: 0x%02X, Ports: %d%n", strategy, numPorts);
+            
+            // Execute the coordinated strategy asynchronously
+            Thread punchThread = new Thread(() -> {
+                try {
+                    switch (strategy) {
+                        case 0x00 -> {
+                            // STANDARD: Basic hole punch
+                            System.out.println("[P2P-INCOMING] ⚡ Executing STANDARD hole punch");
+                            executeStandardHolePunch(targetIP, targetPort, target);
+                        }
+                        case 0x01 -> {
+                            // SYMMETRIC_BURST: Open port pool and burst
+                            System.out.println("[P2P-INCOMING] 🔥 Executing SYMMETRIC BURST strategy");
+                            System.out.printf("  Opening %d ports, bursting to %s:%d%n", 
+                                numPorts, targetIP.getHostAddress(), targetPort);
+                            symmetricPortPoolExpansion(targetIP, targetPort, numPorts, target);
+                        }
+                        case 0x02 -> {
+                            // ASYMMETRIC_SCAN: Scan port range
+                            System.out.println("[P2P-INCOMING] 🔍 Executing ASYMMETRIC SCAN strategy");
+                            int maxPort = targetPort + numPorts - 1;
+                            System.out.printf("  Scanning port range %d-%d on %s%n", 
+                                targetPort, maxPort, targetIP.getHostAddress());
+                            scanPortRange(targetIP, targetPort, maxPort, target);
+                        }
+                        case 0x03 -> {
+                            // SYMMETRIC_MIDPOINT_BURST: Birthday Paradox
+                            System.out.println("[P2P-INCOMING] 🎯 Executing SYMMETRIC MIDPOINT BURST (Birthday Paradox)");
+                            System.out.printf("  Opening %d ports, bursting to peer's midpoint %s:%d%n", 
+                                numPorts, targetIP.getHostAddress(), targetPort);
+                            symmetricMidpointBurst(targetIP, targetPort, numPorts, target);
+                        }
+                        default -> {
+                            System.err.printf("[P2P-INCOMING] ❌ Unknown strategy: 0x%02X%n", strategy);
+                            return;
+                        }
+                    }
+                    
+                    System.out.printf("[P2P-INCOMING] ✅ Connection established with %s (incoming request)%n", target);
+                    
+                    // Notify GUI about new P2P connection and switch to Messages
+                    javafx.application.Platform.runLater(() -> {
+                        try {
+                            // First, switch to Messages tab
+                            com.saferoom.gui.controller.MainController mainController = 
+                                com.saferoom.gui.controller.MainController.getInstance();
+                            if (mainController != null) {
+                                System.out.printf("[P2P-INCOMING] 📱 Switching to Messages tab for incoming P2P from %s%n", target);
+                                mainController.switchToMessages();
+                            }
+                            
+                            // Then open chat with the requester
+                            System.out.printf("[P2P-INCOMING] 💬 Opening chat with requester: %s%n", target);
+                            com.saferoom.gui.controller.MessagesController.openChatWithUser(target);
+                        } catch (Exception e) {
+                            System.err.printf("[P2P-INCOMING] ❌ GUI notification error: %s%n", e.getMessage());
+                        }
+                    });
+                    
+                } catch (Exception e) {
+                    System.err.printf("[P2P-INCOMING] ❌ Strategy execution failed: %s%n", e.getMessage());
+                    e.printStackTrace();
+                }
+            }, "IncomingPunch-" + target);
+            
+            punchThread.setDaemon(true);
+            punchThread.start();
+            
+        } catch (Exception e) {
+            System.err.printf("[P2P-INCOMING] ❌ Error handling punch instruction: %s%n", e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1297,9 +1416,9 @@ public class NatAnalyzer {
      * @param targetPort The peer's port (stable for non-symmetric, or midpoint for symmetric)
      * @param numPorts Number of ports to open (typically N/2 from profiled range)
      */
-    public static void symmetricPortPoolExpansion(InetAddress targetIP, int targetPort, int numPorts) {
+    public static void symmetricPortPoolExpansion(InetAddress targetIP, int targetPort, int numPorts, String targetUsername) {
         System.out.println("\n[SYMMETRIC-PUNCH] 🔥 Starting CONTINUOUS port pool expansion");
-        System.out.printf("  Target: %s:%d%n", targetIP.getHostAddress(), targetPort);
+        System.out.printf("  Target: %s:%d (username: %s)%n", targetIP.getHostAddress(), targetPort, targetUsername);
         System.out.printf("  Opening %d local ports for continuous burst...%n", numPorts);
         
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(numPorts, 50));
@@ -1407,7 +1526,11 @@ public class NatAnalyzer {
                 }
                 
                 // TODO: Register peer and start keep-alive
-                System.out.println("[SYMMETRIC-PUNCH] 💓 Connection ready for messaging");
+                System.out.println("[SYMMETRIC-PUNCH] 💓 Registering peer and starting keep-alive");
+                activePeers.put(targetUsername, peer);
+                lastActivity.put(targetUsername, System.currentTimeMillis());
+                startKeepAlive(workingChannel, peer, targetUsername);
+                System.out.println("[SYMMETRIC-PUNCH] ✅ Connection ready for messaging");
                 
             } else {
                 System.err.println("\n[SYMMETRIC-PUNCH] ❌ TIMEOUT: No collision detected after 30 seconds");
@@ -1447,9 +1570,9 @@ public class NatAnalyzer {
      * @param minPort Start of the symmetric peer's port range
      * @param maxPort End of the symmetric peer's port range
      */
-    public static void scanPortRange(InetAddress targetIP, int minPort, int maxPort) {
+    public static void scanPortRange(InetAddress targetIP, int minPort, int maxPort, String targetUsername) {
         System.out.println("\n[ASYMMETRIC-SCAN] 🔍 Starting CONTINUOUS range scan");
-        System.out.printf("  Target: %s%n", targetIP.getHostAddress());
+        System.out.printf("  Target: %s (username: %s)%n", targetIP.getHostAddress(), targetUsername);
         System.out.printf("  Port range: %d-%d (%d ports)%n", minPort, maxPort, (maxPort - minPort + 1));
         System.out.println("  Using stable local port for scanning");
         
@@ -1501,9 +1624,12 @@ public class NatAnalyzer {
                             
                             connectionEstablished = true;
                             
-                            // Register peer
-                            // TODO: Add peer registration and keep-alive
-                            System.out.println("[ASYMMETRIC-SCAN] 💓 Connection ready for messaging");
+                            // Register peer and start keep-alive
+                            System.out.println("[ASYMMETRIC-SCAN] 💓 Registering peer and starting keep-alive");
+                            activePeers.put(targetUsername, sender);
+                            lastActivity.put(targetUsername, System.currentTimeMillis());
+                            startKeepAlive(stunChannel, sender, targetUsername);
+                            System.out.println("[ASYMMETRIC-SCAN] ✅ Connection ready for messaging");
                             break;
                         }
                     }
@@ -1575,7 +1701,7 @@ public class NatAnalyzer {
                     System.out.println("[P2P-INSTRUCT] 🔥 Executing SYMMETRIC BURST strategy");
                     System.out.printf("  Opening %d ports, sending bursts to %s:%d%n", 
                         numPorts, targetIP.getHostAddress(), targetPort);
-                    symmetricPortPoolExpansion(targetIP, targetPort, numPorts);
+                    symmetricPortPoolExpansion(targetIP, targetPort, numPorts, target);
                 }
                 case 0x02 -> {
                     // ASYMMETRIC_SCAN: Scan port range
@@ -1583,7 +1709,7 @@ public class NatAnalyzer {
                     int maxPort = targetPort + numPorts - 1;
                     System.out.printf("  Scanning port range %d-%d on %s%n", 
                         targetPort, maxPort, targetIP.getHostAddress());
-                    scanPortRange(targetIP, targetPort, maxPort);
+                    scanPortRange(targetIP, targetPort, maxPort, target);
                 }
                 case 0x03 -> {
                     // SYMMETRIC_MIDPOINT_BURST: Birthday Paradox for Symmetric ↔ Symmetric
