@@ -191,6 +191,17 @@ public class P2PSignalingServer extends Thread {
             
             System.out.printf("✅ Both users registered and valid%n");
             
+            // 🔑 STORE P2P REQUEST - Needed for NAT profile coordination
+            String requestKey = requester + "->" + target;
+            PeerInfo requesterInfo = new PeerInfo(
+                requester, target, 
+                requesterUser.publicIP, requesterUser.publicPort,
+                requesterUser.localIP, requesterUser.localPort,
+                from
+            );
+            PEER_REQUESTS.put(requestKey, requesterInfo);
+            System.out.printf("📝 Stored P2P request: %s%n", requestKey);
+            
             // CHECK FOR NAT PROFILES - Use intelligent coordination if available
             NATProfile requesterProfile = NAT_PROFILES.get(requester);
             NATProfile targetProfile = NAT_PROFILES.get(target);
@@ -202,9 +213,21 @@ public class P2PSignalingServer extends Thread {
                 return;
             }
             
-            // FALLBACK: Legacy hole punch (no NAT profiles)
-            System.out.println("⚠️ NAT profiles not available - Using legacy hole punch");
-            coordinateLegacyHolePunch(requesterUser, targetUser, channel, from);
+            // PARTIAL: Only requester has profile - wait for target's profile
+            if (requesterProfile != null && targetProfile == null) {
+                System.out.printf("⏳ Waiting for %s's NAT profile (requester profile ready)%n", target);
+                return;
+            }
+            
+            // PARTIAL: Only target has profile - coordinate now
+            if (requesterProfile == null && targetProfile != null) {
+                System.out.printf("⏳ Waiting for %s's NAT profile (target profile ready)%n", requester);
+                return;
+            }
+            
+            // NO PROFILES: Wait for both to submit NAT profiles
+            System.out.println("⏳ Waiting for NAT profiles from both peers");
+            System.out.println("   Will coordinate automatically when both profiles are received");
             
         } catch (Exception e) {
             System.err.printf("❌ Error handling P2P request: %s%n", e.getMessage());
@@ -748,7 +771,7 @@ public class P2PSignalingServer extends Thread {
             NAT_PROFILES.put(username, new NATProfile(natType, minPort, maxPort, profiledPorts));
             
             // Check if this completes a pending P2P request
-            checkAndCoordinateHolePunching(username);
+            checkAndCoordinateHolePunching(username, channel);
             
         } catch (Exception e) {
             System.err.println("❌ Failed to parse NAT profile: " + e.getMessage());
@@ -760,7 +783,7 @@ public class P2PSignalingServer extends Thread {
      * Checks if both peers in a P2P connection have submitted NAT profiles.
      * If so, sends coordinated hole punching instructions based on NAT types.
      */
-    private void checkAndCoordinateHolePunching(String username) {
+    private void checkAndCoordinateHolePunching(String username, DatagramChannel channel) {
         // Find all pending P2P requests involving this user
         for (Map.Entry<String, PeerInfo> entry : PEER_REQUESTS.entrySet()) {
             PeerInfo peerInfo = entry.getValue();
@@ -786,9 +809,14 @@ public class P2PSignalingServer extends Thread {
                         continue;
                     }
                     
-                    // Determine strategy based on NAT types
-                    coordinateByNATType(requesterProfile, targetProfile, 
-                        requesterUser, targetUser, entry.getValue());
+                    // Use intelligent coordination
+                    try {
+                        coordinateIntelligentHolePunch(requesterProfile, targetProfile, 
+                            requesterUser, targetUser, channel);
+                    } catch (Exception e) {
+                        System.err.printf("❌ Failed to coordinate hole punch: %s%n", e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             }
         }
