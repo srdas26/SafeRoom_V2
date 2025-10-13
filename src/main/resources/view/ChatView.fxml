@@ -54,7 +54,7 @@
     <bottom>
         <HBox alignment="CENTER" styleClass="chat-input-area" spacing="10.0">
             <children>
-                <Button mnemonicParsing="false" styleClass="icon-button">
+                <Button fx:id="attachmentButton" mnemonicParsing="false" onAction="#handleAttachmentClick" styleClass="icon-button">
                     <graphic>
                         <FontIcon iconLiteral="fas-plus" styleClass="input-area-icon" />
                     </graphic>
