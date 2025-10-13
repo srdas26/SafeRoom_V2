@@ -24,6 +24,12 @@ public class LLS {
     public static final byte SIG_NAT_PROFILE = 0x1B; // client -> server (NAT type + port range profile)
     public static final byte SIG_PUNCH_INSTRUCT = 0x1C; // server -> client (coordinated hole punch instructions)
     public static final byte SIG_PUNCH_BURST = 0x1D; // client <-> client (P2P hole punch burst packet)
+    
+    // ---- RELIABLE MESSAGING PROTOCOL (QUIC-inspired) ----
+    public static final byte SIG_RMSG_DATA   = 0x20; // Reliable message data chunk (with seq, CRC)
+    public static final byte SIG_RMSG_ACK    = 0x21; // Selective ACK with bitmap (SACK)
+    public static final byte SIG_RMSG_NACK   = 0x22; // NACK for fast retransmission (optional)
+    public static final byte SIG_RMSG_FIN    = 0x23; // Message transfer complete signal
 
     // ---- COMMON HELPERS ----
     private static void putFixedString(ByteBuffer buf, String str, int len) {
@@ -559,6 +565,316 @@ public class LLS {
         parsed.add(payload);
         
         return parsed; // [type, len, sender, receiver, payload]
+    }
+
+    // ========================================================================
+    // RELIABLE MESSAGING PROTOCOL (QUIC-inspired UDP Reliability)
+    // ========================================================================
+    
+    /**
+     * Reliable Message Data Chunk - MTU-safe (1200 bytes max)
+     * 
+     * Structure (69 bytes header + max 1131 payload):
+     * ┌─────────────────────────────────────────────────────────────────┐
+     * │ Type(1) │ Len(2) │ Sender(20) │ Receiver(20)                   │ 43
+     * ├─────────────────────────────────────────────────────────────────┤
+     * │ MessageID(8) │ ChunkID(2) │ TotalChunks(2)                     │ 12
+     * ├─────────────────────────────────────────────────────────────────┤
+     * │ ChunkSize(2) │ Timestamp(8) │ CRC32(4)                         │ 14
+     * ├─────────────────────────────────────────────────────────────────┤
+     * │ Payload(variable, max 1131)...                                  │
+     * └─────────────────────────────────────────────────────────────────┘
+     * Total: 43 + 12 + 14 = 69 bytes header + payload
+     * 
+     * @param sender       Sender username (20 chars max)
+     * @param receiver     Receiver username (20 chars max)
+     * @param messageId    Unique message ID (8 bytes)
+     * @param chunkId      Zero-based chunk index
+     * @param totalChunks  Total number of chunks in message
+     * @param chunkData    Source data array
+     * @param offset       Offset in source array
+     * @param length       Number of bytes to read (max 1131)
+     * @return ByteBuffer ready to send (position=0, limit=totalSize)
+     */
+    public static ByteBuffer New_ReliableMessage_Chunk(
+        String sender,
+        String receiver,
+        long messageId,
+        int chunkId,
+        int totalChunks,
+        byte[] chunkData,
+        int offset,
+        int length
+    ) {
+        // Validation
+        if (length > 1131) {
+            throw new IllegalArgumentException("Chunk data too large: " + length + " bytes (max 1131)");
+        }
+        if (offset + length > chunkData.length) {
+            throw new IllegalArgumentException("Invalid offset/length: offset=" + offset + 
+                ", length=" + length + ", array=" + chunkData.length);
+        }
+        
+        // Calculate packet size
+        int headerSize = 69; // Fixed header size (43 + 12 + 14)
+        int totalSize = headerSize + length;
+        
+        ByteBuffer packet = ByteBuffer.allocate(totalSize);
+        
+        // Header: type + len + sender + receiver (43 bytes)
+        packet.put(SIG_RMSG_DATA);
+        packet.putShort((short) totalSize);
+        putFixedString(packet, sender, 20);
+        putFixedString(packet, receiver, 20);
+        
+        // Message metadata (12 bytes)
+        packet.putLong(messageId);
+        packet.putShort((short) chunkId);
+        packet.putShort((short) totalChunks);
+        
+        // Chunk metadata + integrity (14 bytes)
+        packet.putShort((short) length);
+        packet.putLong(System.nanoTime()); // Timestamp for RTT measurement
+        
+        // Calculate CRC32 of payload for integrity check
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(chunkData, offset, length);
+        packet.putInt((int) crc.getValue());
+        
+        // Payload (variable, max 1133 bytes)
+        packet.put(chunkData, offset, length);
+        
+        packet.flip();
+        return packet;
+    }
+    
+    /**
+     * Selective ACK with Bitmap (SACK - QUIC-style)
+     * 
+     * Structure (61 bytes):
+     * ┌─────────────────────────────────────────────────────────────────┐
+     * │ Type(1) │ Len(2) │ Sender(20) │ Receiver(20)                   │ 43
+     * ├─────────────────────────────────────────────────────────────────┤
+     * │ MessageID(8) │ HighestConsecutive(2) │ Bitmap(8)               │ 18
+     * └─────────────────────────────────────────────────────────────────┘
+     * 
+     * Bitmap: 64-bit bitmask where bit N indicates if chunk N was received
+     *   - Bit 0 = chunk 0, Bit 1 = chunk 1, etc.
+     *   - 1 = received, 0 = missing
+     *   - For messages >64 chunks, use multiple ACKs with sliding window
+     * 
+     * HighestConsecutive: Highest chunk number received without gaps
+     *   - Example: received [0,1,2,4,5] → highestConsecutive = 2
+     *   - This allows fast detection of missing chunks
+     * 
+     * @param sender                   ACK sender (original receiver)
+     * @param receiver                 ACK receiver (original sender)
+     * @param messageId                Message ID being acknowledged
+     * @param highestConsecutiveChunk  Highest chunk received without gaps
+     * @param chunkBitmap              64-bit bitmask for chunks [0-63]
+     * @return ByteBuffer ready to send
+     */
+    public static ByteBuffer New_ReliableMessage_ACK(
+        String sender,
+        String receiver,
+        long messageId,
+        int highestConsecutiveChunk,
+        long chunkBitmap
+    ) {
+        ByteBuffer packet = ByteBuffer.allocate(61);
+        
+        // Header: type + len + sender + receiver (43 bytes)
+        packet.put(SIG_RMSG_ACK);
+        packet.putShort((short) 61);
+        putFixedString(packet, sender, 20);
+        putFixedString(packet, receiver, 20);
+        
+        // ACK data (18 bytes)
+        packet.putLong(messageId);
+        packet.putShort((short) highestConsecutiveChunk);
+        packet.putLong(chunkBitmap);
+        
+        packet.flip();
+        return packet;
+    }
+    
+    /**
+     * NACK for Fast Retransmission (optional, aggressive recovery)
+     * 
+     * Structure (varies based on missing chunk count):
+     * ┌─────────────────────────────────────────────────────────────────┐
+     * │ Type(1) │ Len(2) │ Sender(20) │ Receiver(20)                   │ 43
+     * ├─────────────────────────────────────────────────────────────────┤
+     * │ MessageID(8) │ MissingCount(2) │ MissingChunkIDs(2*N)...       │
+     * └─────────────────────────────────────────────────────────────────┘
+     * 
+     * Used when receiver detects gaps and wants immediate retransmission
+     * instead of waiting for timer-based retry.
+     * 
+     * @param sender           NACK sender (original receiver)
+     * @param receiver         NACK receiver (original sender)
+     * @param messageId        Message ID
+     * @param missingChunkIds  Array of missing chunk IDs
+     * @return ByteBuffer ready to send
+     */
+    public static ByteBuffer New_ReliableMessage_NACK(
+        String sender,
+        String receiver,
+        long messageId,
+        int[] missingChunkIds
+    ) {
+        int totalSize = 43 + 8 + 2 + (missingChunkIds.length * 2);
+        ByteBuffer packet = ByteBuffer.allocate(totalSize);
+        
+        // Header: type + len + sender + receiver (43 bytes)
+        packet.put(SIG_RMSG_NACK);
+        packet.putShort((short) totalSize);
+        putFixedString(packet, sender, 20);
+        putFixedString(packet, receiver, 20);
+        
+        // NACK data
+        packet.putLong(messageId);
+        packet.putShort((short) missingChunkIds.length);
+        for (int chunkId : missingChunkIds) {
+            packet.putShort((short) chunkId);
+        }
+        
+        packet.flip();
+        return packet;
+    }
+    
+    /**
+     * Message Transfer Complete Signal
+     * 
+     * Sent by receiver after successfully receiving and reassembling
+     * all chunks. This allows sender to clean up state and confirm delivery.
+     * 
+     * Structure (51 bytes):
+     * ┌─────────────────────────────────────────────────────────────────┐
+     * │ Type(1) │ Len(2) │ Sender(20) │ Receiver(20)                   │ 43
+     * ├─────────────────────────────────────────────────────────────────┤
+     * │ MessageID(8)                                                    │ 8
+     * └─────────────────────────────────────────────────────────────────┘
+     * 
+     * @param sender     FIN sender (original receiver)
+     * @param receiver   FIN receiver (original sender)
+     * @param messageId  Completed message ID
+     * @return ByteBuffer ready to send
+     */
+    public static ByteBuffer New_ReliableMessage_FIN(
+        String sender,
+        String receiver,
+        long messageId
+    ) {
+        ByteBuffer packet = ByteBuffer.allocate(51);
+        
+        // Header: type + len + sender + receiver (43 bytes)
+        packet.put(SIG_RMSG_FIN);
+        packet.putShort((short) 51);
+        putFixedString(packet, sender, 20);
+        putFixedString(packet, receiver, 20);
+        
+        // FIN data (8 bytes)
+        packet.putLong(messageId);
+        
+        packet.flip();
+        return packet;
+    }
+    
+    // ========================================================================
+    // RELIABLE MESSAGING PARSERS
+    // ========================================================================
+    
+    /**
+     * Parse Reliable Message Data Chunk
+     * 
+     * @param buffer ByteBuffer positioned at start of packet
+     * @return Object array: [type, len, sender, receiver, msgId, chunkId, 
+     *                        totalChunks, chunkSize, timestamp, crc32, payload]
+     */
+    public static Object[] parseReliableMessageChunk(ByteBuffer buffer) {
+        byte type = buffer.get();
+        short len = buffer.getShort();
+        String sender = getFixedString(buffer, 20);
+        String receiver = getFixedString(buffer, 20);
+        long messageId = buffer.getLong();
+        int chunkId = Short.toUnsignedInt(buffer.getShort());
+        int totalChunks = Short.toUnsignedInt(buffer.getShort());
+        int chunkSize = Short.toUnsignedInt(buffer.getShort());
+        long timestamp = buffer.getLong();
+        int crc32 = buffer.getInt();
+        
+        // Extract payload
+        byte[] payload = new byte[chunkSize];
+        buffer.get(payload);
+        
+        return new Object[] {
+            type, len, sender, receiver, messageId, chunkId, 
+            totalChunks, chunkSize, timestamp, crc32, payload
+        };
+    }
+    
+    /**
+     * Parse Reliable Message ACK
+     * 
+     * @param buffer ByteBuffer positioned at start of packet
+     * @return Object array: [type, len, sender, receiver, msgId, 
+     *                        highestConsecutive, bitmap]
+     */
+    public static Object[] parseReliableMessageACK(ByteBuffer buffer) {
+        byte type = buffer.get();
+        short len = buffer.getShort();
+        String sender = getFixedString(buffer, 20);
+        String receiver = getFixedString(buffer, 20);
+        long messageId = buffer.getLong();
+        int highestConsecutive = Short.toUnsignedInt(buffer.getShort());
+        long bitmap = buffer.getLong();
+        
+        return new Object[] {
+            type, len, sender, receiver, messageId, highestConsecutive, bitmap
+        };
+    }
+    
+    /**
+     * Parse Reliable Message NACK
+     * 
+     * @param buffer ByteBuffer positioned at start of packet
+     * @return Object array: [type, len, sender, receiver, msgId, missingChunkIds[]]
+     */
+    public static Object[] parseReliableMessageNACK(ByteBuffer buffer) {
+        byte type = buffer.get();
+        short len = buffer.getShort();
+        String sender = getFixedString(buffer, 20);
+        String receiver = getFixedString(buffer, 20);
+        long messageId = buffer.getLong();
+        int missingCount = Short.toUnsignedInt(buffer.getShort());
+        
+        int[] missingChunkIds = new int[missingCount];
+        for (int i = 0; i < missingCount; i++) {
+            missingChunkIds[i] = Short.toUnsignedInt(buffer.getShort());
+        }
+        
+        return new Object[] {
+            type, len, sender, receiver, messageId, missingChunkIds
+        };
+    }
+    
+    /**
+     * Parse Reliable Message FIN
+     * 
+     * @param buffer ByteBuffer positioned at start of packet
+     * @return Object array: [type, len, sender, receiver, msgId]
+     */
+    public static Object[] parseReliableMessageFIN(ByteBuffer buffer) {
+        byte type = buffer.get();
+        short len = buffer.getShort();
+        String sender = getFixedString(buffer, 20);
+        String receiver = getFixedString(buffer, 20);
+        long messageId = buffer.getLong();
+        
+        return new Object[] {
+            type, len, sender, receiver, messageId
+        };
     }
 
 }
