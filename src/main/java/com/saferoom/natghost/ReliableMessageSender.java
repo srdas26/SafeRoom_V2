@@ -241,6 +241,11 @@ public class ReliableMessageSender {
             return; // Unknown message (probably already completed)
         }
         
+        // Skip if already complete or failed
+        if (state.state == State.COMPLETE || state.state == State.FAILED) {
+            return; // Already processed, ignore duplicate ACKs
+        }
+        
         // Update RTT based on timestamp
         updateRTT(state);
         

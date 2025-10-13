@@ -264,7 +264,18 @@ public class ReliableMessageReceiver {
     public void handleFIN(long messageId) {
         ReceiveState state = activeMessages.get(messageId);
         if (state == null) {
-            return; // Unknown message (probably already completed)
+            return; // Unknown message (probably already completed and removed)
+        }
+        
+        // Skip if already processed (FIN already received)
+        if (state.finReceived) {
+            // Just send ACK again (idempotent operation)
+            try {
+                sendACK(state);
+            } catch (Exception e) {
+                // Ignore errors on duplicate FIN handling
+            }
+            return;
         }
         
         System.out.printf("[RMSG-RECV] 🏁 FIN received: msgId=%d%n", messageId);
