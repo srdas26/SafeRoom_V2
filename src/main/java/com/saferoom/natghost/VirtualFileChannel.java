@@ -144,7 +144,13 @@ public class VirtualFileChannel extends DatagramChannel {
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         // Write directly to real channel
-        return realChannel.send(src, target != null ? target : targetAddress);
+        SocketAddress actualTarget = (target != null ? target : targetAddress);
+        int bytesSent = realChannel.send(src, actualTarget);
+        
+        System.out.printf("[VirtualFileChannel] 📤 Sent %d bytes to %s (via stunChannel)%n", 
+            bytesSent, actualTarget);
+        
+        return bytesSent;
     }
     
     @Override

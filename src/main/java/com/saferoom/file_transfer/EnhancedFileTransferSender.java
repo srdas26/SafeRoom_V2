@@ -55,7 +55,13 @@ public class EnhancedFileTransferSender {
 		HandShake_Packet pkt = new HandShake_Packet();
 		pkt.make_SYN(fileId, file_size, total_seq);
 	
-		channel.write(pkt.get_header().duplicate());
+		System.out.printf("[FILE-HANDSHAKE] 🤝 Sending SYN for fileId=%d, size=%d, chunks=%d%n", 
+			fileId, file_size, total_seq);
+		
+		int bytesSent = channel.write(pkt.get_header().duplicate());
+		
+		System.out.printf("[FILE-HANDSHAKE] 📤 SYN sent: %d bytes%n", bytesSent);
+		
 		ByteBuffer buffer = ByteBuffer.allocateDirect(HandShake_Packet.HEADER_SIZE).order(ByteOrder.BIG_ENDIAN);
 		
 		long ackDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
