@@ -29,6 +29,9 @@ public class NatAnalyzer {
     // Global KeepAliveManager instance (ONE per application)
     private static KeepAliveManager globalKeepAlive = null;
     
+    // 🆕 P2P Connection Futures - for async coordination
+    private static final Map<String, CompletableFuture<Boolean>> pendingP2PConnections = new ConcurrentHashMap<>();
+    
     // Multiple peer connections support
     private static final Map<String, InetSocketAddress> activePeers = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastActivity = new ConcurrentHashMap<>();
@@ -683,16 +686,34 @@ public class NatAnalyzer {
                 return false;
             }
             
-            // Step 1: Send P2P request to server
+            // Create a CompletableFuture for this connection
+            CompletableFuture<Boolean> connectionFuture = new CompletableFuture<>();
+            pendingP2PConnections.put(targetUsername, connectionFuture);
+            
+            // Send P2P request to server
             ByteBuffer requestPacket = LLS.New_P2PRequest_Packet(myUsername, targetUsername);
             stunChannel.send(requestPacket, signalingServer);
             System.out.println("[P2P] P2P connection request sent to server");
             
-            // 🆕 NEW APPROACH: Don't wait for response here!
-            // The SIG_PUNCH_INSTRUCT will be handled by KeepAliveManager automatically
-            // Just return true to indicate request was sent successfully
-            System.out.println("[P2P] ✅ P2P request sent - coordination will happen via KeepAliveManager");
-            return true;
+            // Wait for coordination to complete (with timeout)
+            // The future will be completed by executeStandardHolePunch/etc when connection establishes
+            try {
+                boolean success = connectionFuture.get(10, TimeUnit.SECONDS);
+                pendingP2PConnections.remove(targetUsername);
+                
+                if (success) {
+                    System.out.println("[P2P] ✅ P2P connection established with " + targetUsername);
+                } else {
+                    System.out.println("[P2P] ❌ P2P connection failed with " + targetUsername);
+                }
+                return success;
+                
+            } catch (TimeoutException e) {
+                System.out.println("[P2P] ⏰ Connection timeout - coordination may still be in progress");
+                pendingP2PConnections.remove(targetUsername);
+                // Check if peer is registered (might have succeeded but future not completed)
+                return activePeers.containsKey(targetUsername);
+            }
             
         } catch (Exception e) {
             System.err.printf("[P2P] P2P request error: %s%n", e.getMessage());
@@ -1631,6 +1652,14 @@ public class NatAnalyzer {
                             activePeers.put(targetUsername, sender);
                             lastActivity.put(targetUsername, System.currentTimeMillis());
                             System.out.println("[ASYMMETRIC-SCAN] ✅ Connection ready for messaging");
+                            
+                            // 🆕 Complete the pending P2P connection future
+                            CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
+                            if (future != null && !future.isDone()) {
+                                future.complete(true);
+                                System.out.println("[ASYMMETRIC-SCAN] ✅ Notified waiting thread");
+                            }
+                            
                             break;
                         }
                     }
@@ -1655,11 +1684,23 @@ public class NatAnalyzer {
                 System.err.println("\n[ASYMMETRIC-SCAN] ❌ TIMEOUT: No response after 30 seconds");
                 System.err.printf("  Total scan cycles completed: %d%n", scanCycle);
                 System.err.printf("  Total ports scanned: %d%n", scanCycle * rangeSize);
+                
+                // 🆕 Complete the pending future with failure
+                CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
+                if (future != null && !future.isDone()) {
+                    future.complete(false);
+                }
             }
             
         } catch (Exception e) {
             System.err.println("[ASYMMETRIC-SCAN] ❌ Failed: " + e.getMessage());
             e.printStackTrace();
+            
+            // 🆕 Complete the pending future with failure
+            CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
+            if (future != null && !future.isDone()) {
+                future.complete(false);
+            }
         }
     }
     
@@ -2024,6 +2065,14 @@ public class NatAnalyzer {
                         lastActivity.put(targetUsername, System.currentTimeMillis());
                         
                         System.out.println("[STANDARD-PUNCH] 💓 Peer registered with KeepAliveManager");
+                        
+                        // 🆕 Complete the pending P2P connection future
+                        CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
+                        if (future != null && !future.isDone()) {
+                            future.complete(true);
+                            System.out.println("[STANDARD-PUNCH] ✅ Notified waiting thread - connection established");
+                        }
+                        
                         break;
                     }
                 }
@@ -2042,11 +2091,23 @@ public class NatAnalyzer {
                 System.err.println("\n[STANDARD-PUNCH] ❌ TIMEOUT: No peer response after 30 seconds");
                 System.err.printf("  Total bursts sent: %d%n", burstCount);
                 System.err.println("  Check Wireshark to verify UDP packets are being sent");
+                
+                // 🆕 Complete the pending future with failure
+                CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
+                if (future != null && !future.isDone()) {
+                    future.complete(false);
+                }
             }
             
         } catch (Exception e) {
             System.err.println("[STANDARD-PUNCH] ❌ Failed: " + e.getMessage());
             e.printStackTrace();
+            
+            // 🆕 Complete the pending future with failure
+            CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
+            if (future != null && !future.isDone()) {
+                future.complete(false);
+            }
         }
     }
 }
