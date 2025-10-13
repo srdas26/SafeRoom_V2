@@ -321,6 +321,25 @@ public final class KeepAliveManager implements AutoCloseable {
         messageListenerThread.setDaemon(true);
         messageListenerThread.start();
     }
+    
+    /**
+     * Stop message listening (for temporary selector changes during hole punch)
+     */
+    public void stopMessageListening() {
+        if (!listening) return;
+        
+        listening = false;
+        if (messageListenerThread != null) {
+            messageListenerThread.interrupt();
+            try {
+                messageListenerThread.join(1000); // Wait up to 1 second
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+            messageListenerThread = null;
+        }
+        System.out.println("[KA] 📡 Message listener stopped");
+    }
 
     @Override
     public void close() {

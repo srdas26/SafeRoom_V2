@@ -2071,6 +2071,7 @@ public class NatAnalyzer {
      * Uses continuous burst until peer response or timeout (30 seconds).
      * 
      * 🔧 REVERTED: Using own Selector for immediate peer response (like old working version)
+     * ⚠️ CRITICAL: Temporarily stops KeepAliveManager to avoid Selector conflict!
      */
     private static void executeStandardHolePunch(InetAddress targetIP, int targetPort, String localUsername, String targetUsername) {
         try {
@@ -2085,6 +2086,15 @@ public class NatAnalyzer {
             System.out.printf("[STANDARD-PUNCH] 🔍 DEBUG: targetIP=%s, targetPort=%d%n", targetIP.getHostAddress(), targetPort);
             System.out.printf("[STANDARD-PUNCH] 🔍 DEBUG: stunChannel local=%s, connected=%b%n", 
                 stunChannel.getLocalAddress(), stunChannel.isConnected());
+            
+            // ⚠️ CRITICAL: Stop KeepAliveManager temporarily to avoid Selector conflict
+            // (A channel can only be registered with ONE Selector at a time!)
+            boolean keepAliveWasActive = false;
+            if (globalKeepAlive != null) {
+                System.out.println("[STANDARD-PUNCH] ⏸️ Temporarily stopping KeepAliveManager for punch...");
+                globalKeepAlive.stopMessageListening();
+                keepAliveWasActive = true;
+            }
             
             // 🔧 REVERTED: Use own Selector for immediate response detection
             stunChannel.configureBlocking(false);
@@ -2134,19 +2144,11 @@ public class NatAnalyzer {
                         
                         peerResponseReceived = true;
                         
-                        // Register peer with global KeepAliveManager
-                        if (globalKeepAlive == null) {
-                            System.out.println("[STANDARD-PUNCH] 🔧 Initializing global KeepAliveManager");
-                            globalKeepAlive = new KeepAliveManager(3_000);
-                            globalKeepAlive.installShutdownHook();
-                            globalKeepAlive.startMessageListening(stunChannel);
-                        }
-                        globalKeepAlive.register(stunChannel, sender);
-                        
+                        // Register peer connection info
                         activePeers.put(targetUsername, sender);
                         lastActivity.put(targetUsername, System.currentTimeMillis());
                         
-                        System.out.println("[STANDARD-PUNCH] 💓 Peer registered with KeepAliveManager");
+                        System.out.println("[STANDARD-PUNCH] 💓 Peer connection registered");
                         
                         // 🆕 Complete the pending P2P connection future
                         CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
@@ -2169,6 +2171,12 @@ public class NatAnalyzer {
             
             selector.close();
             
+            // ⚠️ CRITICAL: Restart KeepAliveManager after punch completes
+            if (keepAliveWasActive && globalKeepAlive != null) {
+                System.out.println("[STANDARD-PUNCH] ▶️ Restarting KeepAliveManager...");
+                globalKeepAlive.startMessageListening(stunChannel);
+            }
+            
             // Timeout check
             if (!peerResponseReceived) {
                 System.err.println("\n[STANDARD-PUNCH] ❌ TIMEOUT: No peer response after 30 seconds");
@@ -2185,6 +2193,16 @@ public class NatAnalyzer {
         } catch (Exception e) {
             System.err.println("[STANDARD-PUNCH] ❌ Failed: " + e.getMessage());
             e.printStackTrace();
+            
+            // Ensure KeepAliveManager is restarted even on error
+            try {
+                if (globalKeepAlive != null) {
+                    System.out.println("[STANDARD-PUNCH] 🔧 Restarting KeepAliveManager after error...");
+                    globalKeepAlive.startMessageListening(stunChannel);
+                }
+            } catch (Exception restartEx) {
+                System.err.println("[STANDARD-PUNCH] ⚠️ Failed to restart KeepAliveManager: " + restartEx.getMessage());
+            }
             
             // 🆕 Complete the pending future with failure
             CompletableFuture<Boolean> future = pendingP2PConnections.get(targetUsername);
