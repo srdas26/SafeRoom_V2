@@ -23,6 +23,7 @@ public final class KeepAliveManager implements AutoCloseable {
     // Message listening support
     private Thread messageListenerThread = null;
     private volatile boolean listening = false;
+    private DatagramChannel activeChannel = null; // 🆕 Store channel reference for buffer flushing
     
     // 🔒 SERVER IP BLACKLIST - Never accept burst packets from signaling server!
     private static InetAddress SERVER_IP = null;
@@ -97,6 +98,9 @@ public final class KeepAliveManager implements AutoCloseable {
             System.out.println("[KA] 🧹 Cleaning up dead message listener thread");
             messageListenerThread = null;
         }
+        
+        // Store channel reference for later buffer flushing
+        this.activeChannel = channel;
         
         listening = true;
         messageListenerThread = new Thread(() -> {
@@ -346,6 +350,31 @@ public final class KeepAliveManager implements AutoCloseable {
             }
             messageListenerThread = null;
         }
+        
+        // ⚡ CRITICAL: Flush any pending packets in the channel buffer!
+        // When KeepAliveManager stops, there might be stale SERVER packets (punch instructions)
+        // that were already processed but still in UDP buffer. If executeStandardHolePunch
+        // reads these old packets, it thinks server is responding during hole punch!
+        if (activeChannel != null && activeChannel.isOpen()) {
+            try {
+                activeChannel.configureBlocking(false);
+                ByteBuffer flushBuffer = ByteBuffer.allocate(2048);
+                int flushedCount = 0;
+                
+                // Drain all pending packets from buffer
+                while (activeChannel.receive(flushBuffer) != null) {
+                    flushedCount++;
+                    flushBuffer.clear();
+                }
+                
+                if (flushedCount > 0) {
+                    System.out.printf("[KA] 🧹 Flushed %d stale packet(s) from channel buffer%n", flushedCount);
+                }
+            } catch (Exception e) {
+                System.err.println("[KA] ⚠️ Warning: Could not flush channel buffer: " + e.getMessage());
+            }
+        }
+        
         System.out.println("[KA] 📡 Message listener stopped");
     }
 
