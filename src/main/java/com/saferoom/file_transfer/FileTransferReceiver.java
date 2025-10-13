@@ -86,6 +86,9 @@ public class FileTransferReceiver {
 		file_size = HandShake_Packet.get_file_size(rcv_syn);
 		total_seq = HandShake_Packet.get_total_seq(rcv_syn);
 		
+		System.out.printf("[RECEIVER-HANDSHAKE] ✅ SYN received: fileId=%d, size=%d, chunks=%d%n", 
+			fileId, file_size, total_seq);
+		
 		if(fileId != 0 && file_size != 0 && total_seq != 0)
 		 {
 			 // Sender'a bağlan
@@ -99,12 +102,20 @@ public class FileTransferReceiver {
 			 
 			 HandShake_Packet ack_pkt = new HandShake_Packet();
 			ack_pkt.make_ACK(fileId, file_size, total_seq);
+			
+			System.out.printf("[RECEIVER-HANDSHAKE] 📤 Sending ACK for fileId=%d%n", fileId);
+			
 			try{
-			while(channel.write(ack_pkt.get_header().duplicate()) == 0)
+			int bytesSent = 0;
+			while((bytesSent = channel.write(ack_pkt.get_header().duplicate())) == 0)
 			{
 				ack_pkt.resetForRetransmitter();
 				LockSupport.parkNanos(200_000);
-			}}catch(IOException e){System.err.println("IO ERROR: " + e);}
+			}
+			System.out.printf("[RECEIVER-HANDSHAKE] ✅ ACK sent: %d bytes%n", bytesSent);
+			}catch(IOException e){
+				System.err.println("[RECEIVER-HANDSHAKE] ❌ ACK send error: " + e);
+			}
 		 	
 			rcv_syn.clear();
 

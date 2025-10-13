@@ -81,6 +81,11 @@ public class EnhancedFileTransferSender {
 		if(r >= HandShake_Packet.HEADER_SIZE && buffer.get(0) == 0x10){
 			buffer.position(1); // Position'ı 1'e set et
 			candidate_file_Id = buffer.getLong(); // Relative okuma
+			
+			System.out.printf("[SENDER-HANDSHAKE] ✅ ACK received: fileId=%d%n", candidate_file_Id);
+		} else {
+			System.err.printf("[SENDER-HANDSHAKE] ❌ Invalid ACK: size=%d, type=0x%02X%n", 
+				r, buffer.get(0));
 		}
 
 		if(candidate_file_Id == fileId)
