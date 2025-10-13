@@ -4,7 +4,6 @@ package com.saferoom.gui.service;
 import com.saferoom.gui.model.Message;
 import com.saferoom.gui.model.User;
 import com.saferoom.client.ClientMenu;
-import com.saferoom.gui.utils.UserSession;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -61,17 +60,30 @@ public class ChatService {
         messages.add(newMessage);
 
         // Try P2P messaging first (check if specific peer connection exists)
-        String currentUsername = UserSession.getInstance().getDisplayName();
         boolean sentViaP2P = false;
         
         // Check if we have active P2P connection with this specific user
         if (ClientMenu.isP2PMessagingAvailable(channelId)) {
-            sentViaP2P = ClientMenu.sendP2PMessage(currentUsername, channelId, text);
+            // Use reliable messaging protocol (with chunking, ACK, retransmission)
+            try {
+                java.util.concurrent.CompletableFuture<Boolean> future = 
+                    com.saferoom.natghost.NatAnalyzer.sendReliableMessage(channelId, text);
+                
+                // Wait for send completion (with timeout)
+                sentViaP2P = future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                
+                if (sentViaP2P) {
+                    System.out.println("[Chat] ✅ Message sent via Reliable P2P to " + channelId);
+                } else {
+                    System.out.println("[Chat] ⚠️ Reliable P2P send failed to " + channelId);
+                }
+            } catch (Exception e) {
+                System.err.println("[Chat] ❌ Reliable P2P error: " + e.getMessage());
+                sentViaP2P = false;
+            }
         }
         
-        if (sentViaP2P) {
-            System.out.println("[Chat] ✅ Message sent via P2P to " + channelId);
-        } else {
+        if (!sentViaP2P) {
             System.out.printf("[Chat] 📡 No P2P connection with %s - would use server relay%n", channelId);
             // TODO: Implement server relay messaging
         }

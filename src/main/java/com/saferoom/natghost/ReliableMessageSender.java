@@ -149,8 +149,22 @@ public class ReliableMessageSender {
         MessageState state = new MessageState(messageId, receiver, message, target);
         activeMessages.put(messageId, state);
         
-        System.out.printf("[RMSG-SEND] 📤 Starting reliable send: msgId=%d, size=%d bytes, chunks=%d, to=%s%n",
-            messageId, message.length, state.chunks.size(), receiver);
+        System.out.println("═══════════════════════════════════════════════════════════════");
+        System.out.printf("[RMSG-SEND] 📤 Starting reliable send:%n");
+        System.out.printf("  - Message ID: %d%n", messageId);
+        System.out.printf("  - Receiver: %s%n", receiver);
+        System.out.printf("  - Target Address: %s%n", target);
+        System.out.printf("  - Message Size: %d bytes%n", message.length);
+        System.out.printf("  - Total Chunks: %d (chunk size: 1131 bytes max)%n", state.chunks.size());
+        System.out.printf("  - Window Size: %d concurrent chunks%n", MAX_CONCURRENT_CHUNKS);
+        
+        // Log chunk details
+        for (int i = 0; i < state.chunks.size(); i++) {
+            ChunkInfo chunk = state.chunks.get(i);
+            System.out.printf("    [Chunk %d] offset=%d, length=%d bytes%n", 
+                chunk.chunkId, chunk.offset, chunk.length);
+        }
+        System.out.println("═══════════════════════════════════════════════════════════════");
         
         // Start sending chunks
         state.state = State.SENDING;
@@ -163,12 +177,17 @@ public class ReliableMessageSender {
      * Send initial wave of chunks (respecting window size)
      */
     private void sendInitialChunks(MessageState state, InetSocketAddress target) {
+        System.out.printf("[RMSG-SEND] 🚀 Starting initial chunk send (window: %d)%n", MAX_CONCURRENT_CHUNKS);
+        
         int sent = 0;
         for (ChunkInfo chunk : state.chunks) {
             if (sent >= MAX_CONCURRENT_CHUNKS) {
+                System.out.printf("[RMSG-SEND] ⏸️  Paused at %d chunks (window limit reached)%n", sent);
                 break; // Respect window size
             }
             
+            System.out.printf("[RMSG-SEND] 📨 Sending chunk %d/%d (%d bytes)...%n", 
+                chunk.chunkId, state.chunks.size() - 1, chunk.length);
             sendChunk(state, chunk, target);
             state.inFlightChunks.set(chunk.chunkId);
             sent++;
@@ -177,8 +196,8 @@ public class ReliableMessageSender {
         state.state = State.WAITING_ACK;
         state.lastActivityTime = System.currentTimeMillis();
         
-        System.out.printf("[RMSG-SEND] 📨 Sent initial %d chunks (window size: %d)%n", 
-            sent, MAX_CONCURRENT_CHUNKS);
+        System.out.printf("[RMSG-SEND] ✅ Initial send complete: %d chunks sent%n", sent);
+        System.out.println("───────────────────────────────────────────────────────────────");
     }
     
     /**
@@ -197,20 +216,19 @@ public class ReliableMessageSender {
                 chunk.length
             );
             
-            channel.send(packet, target);
+            int bytesSent = channel.send(packet, target);
             
             chunk.lastSentTime = System.nanoTime();
             chunk.retries++;
             
-            // Debug log for first send only
-            if (chunk.retries == 1) {
-                System.out.printf("  [Chunk %d/%d] %d bytes sent%n", 
-                    chunk.chunkId, state.chunks.size() - 1, chunk.length);
-            }
+            // Debug log
+            System.out.printf("[RMSG-SEND]   ✉️  Chunk %d: %d bytes → UDP packet %d bytes → sent %d bytes to %s%n", 
+                chunk.chunkId, chunk.length, packet.limit(), bytesSent, target);
             
         } catch (Exception e) {
             System.err.printf("[RMSG-SEND] ❌ Failed to send chunk %d: %s%n", 
                 chunk.chunkId, e.getMessage());
+            e.printStackTrace();
         }
     }
     

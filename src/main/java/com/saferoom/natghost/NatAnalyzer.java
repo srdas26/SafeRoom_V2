@@ -2325,10 +2325,19 @@ public class NatAnalyzer {
             return CompletableFuture.completedFuture(false);
         }
         
-        System.out.printf("[NAT] 📤 Sending reliable message to %s (%s): \"%s\"%n",
-            targetUsername, targetAddr, message);
+        byte[] messageBytes = message.getBytes();
         
-        return reliableSender.sendMessage(targetUsername, message.getBytes(), targetAddr);
+        System.out.println("\n╔═══════════════════════════════════════════════════════════════╗");
+        System.out.println("║         SENDING RELIABLE MESSAGE (NatAnalyzer)                ║");
+        System.out.println("╚═══════════════════════════════════════════════════════════════╝");
+        System.out.printf("[NAT] 📤 Target: %s (%s)%n", targetUsername, targetAddr);
+        System.out.printf("[NAT] 📝 Message: \"%s\"%n", message);
+        System.out.printf("[NAT] 📏 Size: %d bytes (raw text)%n", messageBytes.length);
+        System.out.printf("[NAT] 🔢 Expected chunks: %d (chunk size: 1131 bytes)%n", 
+            (messageBytes.length + 1130) / 1131);
+        System.out.println("───────────────────────────────────────────────────────────────");
+        
+        return reliableSender.sendMessage(targetUsername, messageBytes, targetAddr);
     }
     
     /**
