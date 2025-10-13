@@ -199,7 +199,15 @@ public class ChatViewController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            sendFile(file.toPath());
+            System.out.println("[ChatView] ✅ User confirmed file send - calling sendFile()");
+            try {
+                sendFile(file.toPath());
+            } catch (Exception e) {
+                System.err.println("[ChatView] ❌ Error in sendFile(): " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("[ChatView] ❌ User cancelled file send");
         }
     }
     
@@ -209,10 +217,7 @@ public class ChatViewController {
     private void sendFile(Path filePath) {
         System.out.println("[ChatView] 📤 Sending file: " + filePath.getFileName());
         
-        // Call ChatService.sendFile() which routes to NatAnalyzer
-        chatService.sendFile(currentChannelId, filePath);
-        
-        // Show file send message in chat
+        // Show file send message in chat FIRST
         String fileMsg = String.format(
             "📎 Sending file: %s (%s)",
             filePath.getFileName(),
@@ -220,6 +225,11 @@ public class ChatViewController {
         );
         
         chatService.sendMessage(currentChannelId, fileMsg, currentUser);
+        
+        // THEN call ChatService.sendFile() which routes to NatAnalyzer
+        // This happens in background thread
+        System.out.printf("[ChatView] 🚀 Initiating actual file transfer to %s%n", currentChannelId);
+        chatService.sendFile(currentChannelId, filePath);
     }
     
     /**

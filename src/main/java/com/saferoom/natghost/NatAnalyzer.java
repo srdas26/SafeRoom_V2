@@ -2675,8 +2675,9 @@ public class NatAnalyzer {
     /**
      * Called by KeepAliveManager when file transfer packet detected
      */
-    public static void onFileTransferPacket(InetSocketAddress senderAddr, ByteBuffer packet) {
-        FileTransferDispatcher.forwardPacket(senderAddr, packet);
+    public static void onFileTransferPacket(ByteBuffer packet, SocketAddress senderAddr) {
+        System.out.printf("[NAT-FILE] 📁 Received file packet from %s%n", senderAddr);
+        FileTransferDispatcher.forwardPacket((InetSocketAddress) senderAddr, packet);
     }
     
     private static String findUsernameByAddress(InetSocketAddress addr) {
