@@ -2450,7 +2450,8 @@ public class NatAnalyzer {
     }
     
     /**
-     * Send file to peer (SENDER role)
+     * Send file to peer (SENDER role)  
+     * Just creates sender and gives it the path - sender handles EVERYTHING!
      */
     public static CompletableFuture<Void> sendFile(String targetUser, java.nio.file.Path filePath) {
         InetSocketAddress peerAddr = activePeers.get(targetUser);
@@ -2464,54 +2465,36 @@ public class NatAnalyzer {
             long fileId = System.currentTimeMillis();
             
             try {
-                System.out.printf("[FILE-SEND] 📤 Sending %s to %s (fileId=%d)%n",
-                    filePath.getFileName(), targetUser, fileId);
+                System.out.printf("[FILE-SEND] 📤 Sending %s to %s%n",
+                    filePath.getFileName(), targetUser);
                 
-                // 🔥 STOP KeepAliveManager to give stunChannel to file transfer
-                if (globalKeepAlive != null) {
-                    System.out.println("[FILE-SEND] ⏸️  Pausing KeepAliveManager during file transfer");
-                    globalKeepAlive.stopMessageListening();
-                }
+                // Create sender - it handles handshake, congestion control, everything!
+                com.saferoom.file_transfer.EnhancedFileTransferSender sender = 
+                    new com.saferoom.file_transfer.EnhancedFileTransferSender(stunChannel);
                 
-                // Create session
-                FileTransferSession session = new FileTransferSession(
-                    targetUser, fileId, peerAddr, FileTransferSession.Role.SENDER
-                );
-                fileTransferSessions.put(fileId, session);
+                // Send file - sender does all the work!
+                sender.sendFile(filePath, fileId);
                 
-                // Create sender with DIRECT stunChannel - NO VirtualFileChannel!
-                session.sender = new com.saferoom.file_transfer.EnhancedFileTransferSender(stunChannel);
+                System.out.printf("[FILE-SEND] ✅ File sent successfully%n");
                 
-                // Send file (blocks until complete)
-                session.sender.sendFile(filePath, fileId);
-                
-                System.out.printf("[FILE-SEND] ✅ File sent: fileId=%d%n", fileId);
-                
-                // Callback
                 if (fileTransferCallback != null) {
                     fileTransferCallback.onFileTransferComplete(targetUser, fileId, filePath);
                 }
                 
             } catch (Exception e) {
-                System.err.printf("[FILE-SEND] ❌ Error: %s%n", e.getMessage());
+                System.err.printf("[FILE-SEND] ❌ Failed: %s%n", e.getMessage());
+                e.printStackTrace();
                 if (fileTransferCallback != null) {
                     fileTransferCallback.onFileTransferError(targetUser, fileId, e);
                 }
                 throw new RuntimeException(e);
-            } finally {
-                fileTransferSessions.remove(fileId);
-                
-                // 🔥 RESTART KeepAliveManager after file transfer
-                if (globalKeepAlive != null) {
-                    System.out.println("[FILE-SEND] ▶️  Resuming KeepAliveManager");
-                    globalKeepAlive.startMessageListening(stunChannel);
-                }
             }
         }, P2P_EXECUTOR);
     }
     
     /**
      * Accept incoming file transfer (RECEIVER role)
+     * Just creates receiver and gives it the path - receiver handles EVERYTHING!
      */
     public static void acceptFileTransfer(String senderUsername, long fileId, java.nio.file.Path savePath) {
         
@@ -2523,48 +2506,28 @@ public class NatAnalyzer {
         
         CompletableFuture.runAsync(() -> {
             try {
-                System.out.printf("[FILE-RECV] 📥 Accepting file transfer: fileId=%d, savePath=%s%n",
-                    fileId, savePath);
+                System.out.printf("[FILE-RECV] 📥 Accepting file transfer, saving to: %s%n", savePath);
                 
-                // 🔥 STOP KeepAliveManager to give stunChannel to file transfer
-                if (globalKeepAlive != null) {
-                    System.out.println("[FILE-RECV] ⏸️  Pausing KeepAliveManager during file transfer");
-                    globalKeepAlive.stopMessageListening();
-                }
+                // Create receiver - it handles handshake, NACK, everything!
+                com.saferoom.file_transfer.FileTransferReceiver receiver = 
+                    new com.saferoom.file_transfer.FileTransferReceiver();
+                receiver.channel = stunChannel;
+                receiver.filePath = savePath;
                 
-                // Create session
-                FileTransferSession session = new FileTransferSession(
-                    senderUsername, fileId, senderAddr, FileTransferSession.Role.RECEIVER
-                );
-                fileTransferSessions.put(fileId, session);
+                // Receive file - receiver does all the work!
+                receiver.ReceiveData();
                 
-                // Create receiver with DIRECT stunChannel - NO VirtualFileChannel!
-                session.receiver = new com.saferoom.file_transfer.FileTransferReceiver();
-                session.receiver.channel = stunChannel;
-                session.receiver.filePath = savePath;
+                System.out.printf("[FILE-RECV] ✅ File received successfully%n");
                 
-                // Receive file (blocks until complete)
-                session.receiver.ReceiveData();
-                
-                System.out.printf("[FILE-RECV] ✅ File received: fileId=%d%n", fileId);
-                
-                // Callback
                 if (fileTransferCallback != null) {
                     fileTransferCallback.onFileTransferComplete(senderUsername, fileId, savePath);
                 }
                 
             } catch (Exception e) {
-                System.err.printf("[FILE-RECV] ❌ Error: %s%n", e.getMessage());
+                System.err.printf("[FILE-RECV] ❌ Failed: %s%n", e.getMessage());
+                e.printStackTrace();
                 if (fileTransferCallback != null) {
                     fileTransferCallback.onFileTransferError(senderUsername, fileId, e);
-                }
-            } finally {
-                fileTransferSessions.remove(fileId);
-                
-                // 🔥 RESTART KeepAliveManager after file transfer
-                if (globalKeepAlive != null) {
-                    System.out.println("[FILE-RECV] ▶️  Resuming KeepAliveManager");
-                    globalKeepAlive.startMessageListening(stunChannel);
                 }
             }
         }, P2P_EXECUTOR);
