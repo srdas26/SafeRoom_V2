@@ -91,10 +91,14 @@ public class FileTransferReceiver {
 		
 		if(fileId != 0 && file_size != 0 && total_seq != 0)
 		 {
-			 // Sender'a bağlan
+			 // Sender'a bağlan (eğer henüz bağlı değilse)
 			 try {
-				 channel.connect(senderAddress);
-				 System.out.println("🔗 Sender'a bağlandı: " + senderAddress);
+				 if(!channel.isConnected()) {
+					 channel.connect(senderAddress);
+					 System.out.println("🔗 Sender'a bağlandı: " + senderAddress);
+				 } else {
+					 System.out.println("🔗 Already connected to: " + senderAddress);
+				 }
 			 } catch(IOException e) {
 				 System.err.println("❌ Sender'a bağlanma hatası: " + e);
 				 return false;
