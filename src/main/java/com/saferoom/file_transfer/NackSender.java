@@ -373,8 +373,12 @@ public class NackSender implements Runnable{
 			throw new IllegalStateException("You must bind the channel first");
 		}
 		
+		System.out.printf("[NACK-SENDER] 🚀 Starting receive loop for fileId=%d%n", fileId);
+		
 		try {
 			startNackLoop();
+			
+			int packetCount = 0;
 			while(!Thread.currentThread().isInterrupted() && !transferCompleted){
 				buf.clear();
 
@@ -382,6 +386,12 @@ public class NackSender implements Runnable{
 				do{
 					try{
 					x = channel.read(buf);
+					
+					// Debug: Log first few packets
+					if (x > 0 && packetCount < 5) {
+						System.out.printf("[NACK-SENDER] 📥 Packet received: %d bytes (count: %d)%n", x, packetCount);
+						packetCount++;
+					}
 					}catch(java.net.PortUnreachableException e){
 						System.err.println("Sender port unreachable - connection may be closed: " + e.getMessage());
 						LockSupport.parkNanos(10_000_000); // 10ms bekle ve tekrar dene

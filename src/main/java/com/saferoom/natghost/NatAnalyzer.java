@@ -2580,6 +2580,9 @@ public class NatAnalyzer {
         // Cache SYN packets until user accepts/declines
         private static final Map<Long, ByteBuffer> cachedSYNPackets = new ConcurrentHashMap<>();
         
+        // Debug counter for DATA packet logging
+        private static int dataPacketDebugCount = 0;
+        
         /**
          * Forward packet to appropriate session
          */
@@ -2606,7 +2609,17 @@ public class NatAnalyzer {
             // Data or NACK packet
             long fileId = extractFileId(packet, packetSize);
             if (fileId > 0) {
+                // Debug: Log first few DATA packets with fileId
+                if (packetSize >= 22 && dataPacketDebugCount < 3) {
+                    System.out.printf("[FILE-DISPATCHER] 🔍 Routing DATA packet: fileId=%d, size=%d%n", 
+                        fileId, packetSize);
+                    dataPacketDebugCount++;
+                }
+                
                 forwardToSession(fileId, packet);
+            } else {
+                System.err.printf("[FILE-DISPATCHER] ❌ Invalid fileId extracted: %d, size=%d%n", 
+                    fileId, packetSize);
             }
         }
         
@@ -2618,7 +2631,15 @@ public class NatAnalyzer {
                 copy.put(packet.duplicate());
                 copy.flip();
                 
-                queue.offer(copy);
+                boolean offered = queue.offer(copy);
+                
+                // Debug log for DATA packets (only first few to avoid spam)
+                if (offered && copy.remaining() >= 22) {
+                    System.out.printf("[FILE-DISPATCHER] 📦 DATA packet queued for fileId=%d (queue size: %d)%n", 
+                        fileId, queue.size());
+                }
+            } else {
+                System.err.printf("[FILE-DISPATCHER] ❌ No queue registered for fileId=%d%n", fileId);
             }
         }
         
