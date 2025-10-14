@@ -652,21 +652,20 @@ public class ClientMenu{
 						});
 					}
 					
-					@Override
-					public void onFileTransferComplete(String peer, long fileId, java.nio.file.Path filePath) {
-						System.out.printf("[P2P-FILE-CALLBACK] ✅ File transfer complete: %s%n", filePath);
-						
-						javafx.application.Platform.runLater(() -> {
-							com.saferoom.gui.service.ChatService.getInstance()
-								.receiveP2PMessage(
-									peer, 
-									username, 
-									String.format("✅ File received: %s", filePath.getFileName())
-								);
-						});
-					}
+				@Override
+				public void onFileTransferComplete(String peer, long fileId, java.nio.file.Path filePath) {
+					System.out.printf("[P2P-FILE-CALLBACK] ✅ File transfer complete: %s%n", filePath);
 					
-					@Override
+					// Send "File received" confirmation to sender via P2P
+					String confirmationMessage = String.format("✅ File received: %s", filePath.getFileName());
+					
+					try {
+						com.saferoom.natghost.NatAnalyzer.sendReliableMessage(peer, confirmationMessage);
+						System.out.printf("[P2P-FILE-CALLBACK] 📤 Sent confirmation to %s%n", peer);
+					} catch (Exception e) {
+						System.err.println("[P2P-FILE-CALLBACK] Failed to send confirmation: " + e.getMessage());
+					}
+				}					@Override
 					public void onFileTransferError(String peer, long fileId, Exception error) {
 						System.err.printf("[P2P-FILE-CALLBACK] ❌ File transfer error: %s%n", error.getMessage());
 						
@@ -677,17 +676,30 @@ public class ClientMenu{
 							alert.setHeaderText("File Transfer Failed");
 							alert.setContentText(error.getMessage());
 							alert.show();
+					});
+				}
+				
+				@Override
+				public void onFileTransferProgress(String peer, long fileId, int current, int total) {
+					// Log every chunk (for debugging)
+					System.out.printf("[P2P-FILE-CALLBACK] 📊 Progress: %d/%d chunks%n", current, total);
+					
+					// Update GUI only at 25%, 50%, 75% milestones
+					int progressPercent = (current * 100) / total;
+					int lastMilestone = ((current - 1) * 100) / total;
+					
+					// Check if we just crossed a 25% milestone
+					if (progressPercent / 25 > lastMilestone / 25) {
+						javafx.application.Platform.runLater(() -> {
+							String progressMsg = String.format("⏳ Progress: %d%% (%d/%d chunks)", 
+								progressPercent, current, total);
+							System.out.printf("[P2P-FILE-CALLBACK] � Milestone: %s%n", progressMsg);
+							// Note: Not adding to chat to avoid spam
+							// Could add a single progress message and update it (advanced UI)
 						});
 					}
-					
-					@Override
-					public void onFileTransferProgress(String peer, long fileId, int current, int total) {
-						// Update progress in GUI (TODO: implement progress bar)
-						System.out.printf("[P2P-FILE-CALLBACK] 📊 Progress: %d/%d chunks%n", current, total);
-					}
-				});
-				
-				System.out.println("[P2P] ✅ File transfer callback registered");
+				}
+			});				System.out.println("[P2P] ✅ File transfer callback registered");
 			}
 			
 			return registered;
