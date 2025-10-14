@@ -2463,14 +2463,24 @@ public class NatAnalyzer {
         
         return CompletableFuture.runAsync(() -> {
             long fileId = System.currentTimeMillis();
+            DatagramChannel tempChannel = null;
             
             try {
                 System.out.printf("[FILE-SEND] 📤 Sending %s to %s%n",
                     filePath.getFileName(), targetUser);
                 
-                // Create sender - it handles handshake, congestion control, everything!
+                // Create temporary CONNECTED channel for file transfer
+                // (stunChannel is shared and unconnected, but file_transfer needs connected channel)
+                tempChannel = DatagramChannel.open();
+                tempChannel.bind(stunChannel.getLocalAddress());
+                tempChannel.connect(peerAddr);
+                tempChannel.configureBlocking(true);
+                
+                System.out.printf("[FILE-SEND] 🔗 Created connected channel to %s%n", peerAddr);
+                
+                // Create sender with connected channel
                 com.saferoom.file_transfer.EnhancedFileTransferSender sender = 
-                    new com.saferoom.file_transfer.EnhancedFileTransferSender(stunChannel);
+                    new com.saferoom.file_transfer.EnhancedFileTransferSender(tempChannel);
                 
                 // Send file - sender does all the work!
                 sender.sendFile(filePath, fileId);
@@ -2488,6 +2498,16 @@ public class NatAnalyzer {
                     fileTransferCallback.onFileTransferError(targetUser, fileId, e);
                 }
                 throw new RuntimeException(e);
+            } finally {
+                // Close temporary channel
+                if (tempChannel != null && tempChannel.isOpen()) {
+                    try {
+                        tempChannel.close();
+                        System.out.println("[FILE-SEND] 🔌 Closed temporary channel");
+                    } catch (Exception e) {
+                        System.err.println("[FILE-SEND] ⚠️ Error closing channel: " + e.getMessage());
+                    }
+                }
             }
         }, P2P_EXECUTOR);
     }
@@ -2505,13 +2525,24 @@ public class NatAnalyzer {
         }
         
         CompletableFuture.runAsync(() -> {
+            DatagramChannel tempChannel = null;
+            
             try {
                 System.out.printf("[FILE-RECV] 📥 Accepting file transfer, saving to: %s%n", savePath);
                 
-                // Create receiver - it handles handshake, NACK, everything!
+                // Create temporary CONNECTED channel for file transfer
+                // (stunChannel is shared and unconnected, but file_transfer needs connected channel)
+                tempChannel = DatagramChannel.open();
+                tempChannel.bind(stunChannel.getLocalAddress());
+                tempChannel.connect(senderAddr);
+                tempChannel.configureBlocking(true);
+                
+                System.out.printf("[FILE-RECV] 🔗 Created connected channel from %s%n", senderAddr);
+                
+                // Create receiver with connected channel
                 com.saferoom.file_transfer.FileTransferReceiver receiver = 
                     new com.saferoom.file_transfer.FileTransferReceiver();
-                receiver.channel = stunChannel;
+                receiver.channel = tempChannel;
                 receiver.filePath = savePath;
                 
                 // Receive file - receiver does all the work!
@@ -2528,6 +2559,16 @@ public class NatAnalyzer {
                 e.printStackTrace();
                 if (fileTransferCallback != null) {
                     fileTransferCallback.onFileTransferError(senderUsername, fileId, e);
+                }
+            } finally {
+                // Close temporary channel
+                if (tempChannel != null && tempChannel.isOpen()) {
+                    try {
+                        tempChannel.close();
+                        System.out.println("[FILE-RECV] 🔌 Closed temporary channel");
+                    } catch (Exception e) {
+                        System.err.println("[FILE-RECV] ⚠️ Error closing channel: " + e.getMessage());
+                    }
                 }
             }
         }, P2P_EXECUTOR);
