@@ -2508,9 +2508,9 @@ public class NatAnalyzer {
                         
                         System.out.printf("[FILE-SEND] ✅ File sent successfully%n");
                         
-                        if (fileTransferCallback != null) {
-                            fileTransferCallback.onFileTransferComplete(targetUser, fileId, filePath);
-                        }
+                        // NOTE: Don't call onFileTransferComplete here!
+                        // That callback is for RECEIVER side only (to send confirmation message)
+                        // Sender doesn't need to send any confirmation message
                     } finally {
                         // Disconnect after transfer
                         stunChannel.disconnect();
