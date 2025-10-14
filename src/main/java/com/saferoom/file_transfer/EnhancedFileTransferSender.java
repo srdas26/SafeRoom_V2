@@ -58,19 +58,33 @@ public class EnhancedFileTransferSender {
 		System.out.printf("[FILE-HANDSHAKE] 🤝 Sending SYN for fileId=%d, size=%d, chunks=%d%n", 
 			fileId, file_size, total_seq);
 		
+		// Send initial SYN
 		int bytesSent = channel.write(pkt.get_header().duplicate());
-		
 		System.out.printf("[FILE-HANDSHAKE] 📤 SYN sent: %d bytes%n", bytesSent);
 		
 		ByteBuffer buffer = ByteBuffer.allocateDirect(HandShake_Packet.HEADER_SIZE).order(ByteOrder.BIG_ENDIAN);
 		
-		long ackDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+		long ackDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30); // 30 saniye timeout
+		long lastSynTime = System.nanoTime();
 		int r;
+		int synRetryCount = 0;
 		
 		do{
 			if(System.nanoTime() > ackDeadline) {
-				System.err.println("Handshake ACK timeout after 5 seconds");
+				System.err.println("Handshake ACK timeout after 30 seconds");
 				return false;
+			}
+			
+			// Her 250ms'de bir SYN tekrar gönder (receiver başlayana kadar)
+			long now = System.nanoTime();
+			if (now - lastSynTime > TimeUnit.MILLISECONDS.toNanos(250)) {
+				pkt.resetForRetransmitter();
+				channel.write(pkt.get_header().duplicate());
+				synRetryCount++;
+				if (synRetryCount % 10 == 0) {
+					System.out.printf("[FILE-HANDSHAKE] 🔄 SYN retry #%d (waiting for receiver...)%n", synRetryCount);
+				}
+				lastSynTime = now;
 			}
 			
 			r = channel.read(buffer);
@@ -82,7 +96,8 @@ public class EnhancedFileTransferSender {
 			buffer.position(1); // Position'ı 1'e set et
 			candidate_file_Id = buffer.getLong(); // Relative okuma
 			
-			System.out.printf("[SENDER-HANDSHAKE] ✅ ACK received: fileId=%d%n", candidate_file_Id);
+			System.out.printf("[SENDER-HANDSHAKE] ✅ ACK received: fileId=%d (after %d SYN retries)%n", 
+				candidate_file_Id, synRetryCount);
 		} else {
 			System.err.printf("[SENDER-HANDSHAKE] ❌ Invalid ACK: size=%d, type=0x%02X%n", 
 				r, buffer.get(0));
