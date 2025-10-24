@@ -532,7 +532,7 @@ public class NatAnalyzer {
         // Initialize global KeepAliveManager ONCE if not already started
         if (globalKeepAlive == null) {
             System.out.println("[P2P] 🔧 Initializing global KeepAliveManager");
-            globalKeepAlive = new KeepAliveManager(3_000);
+            globalKeepAlive = new KeepAliveManager(20_000); // 20 seconds keep-alive
             globalKeepAlive.installShutdownHook();
             globalKeepAlive.startMessageListening(stunChannel); // Start integrated message listening
         }
@@ -680,7 +680,7 @@ public class NatAnalyzer {
             // 🔧 FIX: Use globalKeepAlive so executeStandardHolePunch() uses SAME channel!
             System.out.println("[P2P] 🎧 Starting notification listener after registration...");
             if (globalKeepAlive == null) {
-                globalKeepAlive = new KeepAliveManager(3_000);
+                globalKeepAlive = new KeepAliveManager(20_000); // 20 seconds keep-alive
                 globalKeepAlive.installShutdownHook();
                 globalKeepAlive.startMessageListening(stunChannel);
                 System.out.println("[P2P] 📡 Global KeepAliveManager started - ready for incoming P2P requests");
@@ -1063,7 +1063,7 @@ public class NatAnalyzer {
             // Initialize global KeepAliveManager if not already started
             if (globalKeepAlive == null) {
                 System.out.println("[P2P] 🔧 Initializing global KeepAliveManager");
-                globalKeepAlive = new KeepAliveManager(3_000);
+                globalKeepAlive = new KeepAliveManager(20_000); // 20 seconds keep-alive
                 globalKeepAlive.installShutdownHook();
                 globalKeepAlive.startMessageListening(stunChannel);
             }
@@ -1738,7 +1738,7 @@ public class NatAnalyzer {
                             System.out.println("[ASYMMETRIC-SCAN] 💓 Registering peer with KeepAliveManager");
                             if (globalKeepAlive == null) {
                                 System.out.println("[ASYMMETRIC-SCAN] 🔧 Initializing global KeepAliveManager");
-                                globalKeepAlive = new KeepAliveManager(3_000);
+                                globalKeepAlive = new KeepAliveManager(20_000); // 20 seconds keep-alive
                                 globalKeepAlive.installShutdownHook();
                                 globalKeepAlive.startMessageListening(stunChannel);
                             }

@@ -126,18 +126,27 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            if (response.getSuccess()) {
-                System.out.println("[SignalingClient] ✅ Call accepted successfully");
+            // 🔧 FIX: Use stream instead of blocking stub!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.println("[SignalingClient] 📤 Sending CALL_ACCEPT via stream");
+                signalingStreamOut.onNext(signal);
                 return true;
             } else {
-                System.err.printf("[SignalingClient] ❌ Accept failed: %s%n", response.getMessage());
-                return false;
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                
+                if (response.getSuccess()) {
+                    System.out.println("[SignalingClient] ✅ Call accepted successfully (unary)");
+                    return true;
+                } else {
+                    System.err.printf("[SignalingClient] ❌ Accept failed: %s%n", response.getMessage());
+                    return false;
+                }
             }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error accepting call: %s%n", e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -157,12 +166,20 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            return response.getSuccess();
+            // 🔧 FIX: Use stream instead of blocking stub!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.println("[SignalingClient] 📤 Sending CALL_REJECT via stream");
+                signalingStreamOut.onNext(signal);
+                return true;
+            } else {
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                return response.getSuccess();
+            }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error rejecting call: %s%n", e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -182,12 +199,20 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            return response.getSuccess();
+            // 🔧 FIX: Use stream instead of blocking stub!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.println("[SignalingClient] 📤 Sending CALL_CANCEL via stream");
+                signalingStreamOut.onNext(signal);
+                return true;
+            } else {
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                return response.getSuccess();
+            }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error cancelling call: %s%n", e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -207,12 +232,20 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            return response.getSuccess();
+            // 🔧 FIX: Use stream instead of blocking stub!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.println("[SignalingClient] 📤 Sending CALL_END via stream");
+                signalingStreamOut.onNext(signal);
+                return true;
+            } else {
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                return response.getSuccess();
+            }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error ending call: %s%n", e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -233,18 +266,27 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            if (response.getSuccess()) {
-                System.out.println("[SignalingClient] ✅ Offer sent successfully");
+            // 🔧 FIX: Use stream for real-time signaling!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.println("[SignalingClient] 📤 Sending OFFER via stream");
+                signalingStreamOut.onNext(signal);
                 return true;
             } else {
-                System.err.printf("[SignalingClient] ❌ Offer failed: %s%n", response.getMessage());
-                return false;
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                
+                if (response.getSuccess()) {
+                    System.out.println("[SignalingClient] ✅ Offer sent successfully (unary)");
+                    return true;
+                } else {
+                    System.err.printf("[SignalingClient] ❌ Offer failed: %s%n", response.getMessage());
+                    return false;
+                }
             }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error sending offer: %s%n", e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -265,18 +307,27 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            if (response.getSuccess()) {
-                System.out.println("[SignalingClient] ✅ Answer sent successfully");
+            // 🔧 FIX: Use stream for real-time signaling!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.println("[SignalingClient] 📤 Sending ANSWER via stream");
+                signalingStreamOut.onNext(signal);
                 return true;
             } else {
-                System.err.printf("[SignalingClient] ❌ Answer failed: %s%n", response.getMessage());
-                return false;
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                
+                if (response.getSuccess()) {
+                    System.out.println("[SignalingClient] ✅ Answer sent successfully (unary)");
+                    return true;
+                } else {
+                    System.err.printf("[SignalingClient] ❌ Answer failed: %s%n", response.getMessage());
+                    return false;
+                }
             }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error sending answer: %s%n", e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -299,9 +350,15 @@ public class WebRTCSignalingClient {
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            return response.getSuccess();
+            // 🔧 FIX: Use stream for real-time ICE signaling!
+            if (streamActive && signalingStreamOut != null) {
+                signalingStreamOut.onNext(signal);
+                return true;
+            } else {
+                System.err.println("[SignalingClient] ❌ Stream not active for ICE");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                return response.getSuccess();
+            }
             
         } catch (Exception e) {
             System.err.printf("[SignalingClient] ❌ Error sending ICE candidate: %s%n", e.getMessage());
