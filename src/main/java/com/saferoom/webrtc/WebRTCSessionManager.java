@@ -156,6 +156,13 @@ public class WebRTCSessionManager {
     }
     
     /**
+     * Get list of registered users (for debugging)
+     */
+    public static String getRegisteredUsers() {
+        return String.join(", ", signalingStreams.keySet());
+    }
+    
+    /**
      * Get active calls count
      */
     public static int getActiveCallsCount() {

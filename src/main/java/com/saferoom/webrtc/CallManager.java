@@ -294,35 +294,43 @@ public class CallManager {
         String from = signal.getFrom();
         String callId = signal.getCallId();
         
-        System.out.printf("[CallManager] 📨 Received %s from %s (callId: %s)%n", type, from, callId);
+        System.out.printf("[CallManager] 📨 Received %s from %s (callId: %s, currentState: %s)%n", 
+            type, from, callId, currentState);
         
         switch (type) {
             case CALL_REQUEST:
+                System.out.println("[CallManager] 🔔 Processing CALL_REQUEST...");
                 handleIncomingCallRequest(signal);
                 break;
                 
             case CALL_ACCEPT:
+                System.out.println("[CallManager] ✅ Processing CALL_ACCEPT...");
                 handleCallAccepted(signal);
                 break;
                 
             case CALL_REJECT:
             case CALL_CANCEL:
+                System.out.println("[CallManager] ❌ Processing CALL_REJECT/CANCEL...");
                 handleCallRejected(signal);
                 break;
                 
             case CALL_END:
+                System.out.println("[CallManager] 📴 Processing CALL_END...");
                 handleCallEnded(signal);
                 break;
                 
             case OFFER:
+                System.out.println("[CallManager] 📩 Processing OFFER...");
                 handleOffer(signal);
                 break;
                 
             case ANSWER:
+                System.out.println("[CallManager] 📨 Processing ANSWER...");
                 handleAnswer(signal);
                 break;
                 
             case ICE_CANDIDATE:
+                System.out.println("[CallManager] 🧊 Processing ICE_CANDIDATE...");
                 handleIceCandidate(signal);
                 break;
                 
@@ -335,8 +343,11 @@ public class CallManager {
      * Handle incoming call request
      */
     private void handleIncomingCallRequest(WebRTCSignal signal) {
+        System.out.printf("[CallManager] 📞 Incoming call from %s (audio=%b, video=%b)%n",
+            signal.getFrom(), signal.getAudioEnabled(), signal.getVideoEnabled());
+        
         if (currentState != CallState.IDLE) {
-            System.err.println("[CallManager] ❌ Already in a call - rejecting");
+            System.err.printf("[CallManager] ❌ Already in a call (state: %s) - rejecting%n", currentState);
             signalingClient.sendCallReject(signal.getCallId(), signal.getFrom());
             return;
         }
@@ -346,6 +357,8 @@ public class CallManager {
         this.isOutgoingCall = false;
         this.currentState = CallState.RINGING;
         
+        System.out.printf("[CallManager] 📞 Call state updated: RINGING (callId: %s)%n", currentCallId);
+        
         // Create WebRTC peer connection
         webrtcClient = new WebRTCClient(currentCallId, remoteUsername);
         webrtcClient.createPeerConnection(signal.getAudioEnabled(), signal.getVideoEnabled());
@@ -353,6 +366,7 @@ public class CallManager {
         
         // Notify GUI
         if (onIncomingCallCallback != null) {
+            System.out.printf("[CallManager] 🔔 Triggering incoming call callback for GUI...%n");
             IncomingCallInfo info = new IncomingCallInfo(
                 signal.getCallId(),
                 signal.getFrom(),
@@ -361,6 +375,9 @@ public class CallManager {
                 signal.getTimestamp()
             );
             onIncomingCallCallback.accept(info);
+            System.out.println("[CallManager] ✅ Incoming call callback triggered successfully");
+        } else {
+            System.err.println("[CallManager] ❌ WARNING: onIncomingCallCallback is NULL! Dialog won't show!");
         }
     }
     

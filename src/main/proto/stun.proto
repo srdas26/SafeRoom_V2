@@ -310,15 +310,16 @@ message HeartbeatResponse {
 
 message WebRTCSignal {
     enum SignalType {
-        OFFER = 0;              // SDP offer
-        ANSWER = 1;             // SDP answer
-        ICE_CANDIDATE = 2;      // ICE candidate
-        CALL_REQUEST = 3;       // Arama isteği
-        CALL_ACCEPT = 4;        // Arama kabul edildi
-        CALL_REJECT = 5;        // Arama reddedildi
-        CALL_END = 6;           // Arama sonlandı
-        CALL_BUSY = 7;          // Kullanıcı meşgul
-        CALL_CANCEL = 8;        // Arayan iptal etti
+        REGISTRATION = 0;       // Stream registration (first message)
+        OFFER = 1;              // SDP offer
+        ANSWER = 2;             // SDP answer
+        ICE_CANDIDATE = 3;      // ICE candidate
+        CALL_REQUEST = 4;       // Arama isteği
+        CALL_ACCEPT = 5;        // Arama kabul edildi
+        CALL_REJECT = 6;        // Arama reddedildi
+        CALL_END = 7;           // Arama sonlandı
+        CALL_BUSY = 8;          // Kullanıcı meşgul
+        CALL_CANCEL = 9;        // Arayan iptal etti
     }
     
     SignalType type = 1;        // Sinyal tipi

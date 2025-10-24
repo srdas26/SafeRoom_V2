@@ -83,24 +83,36 @@ public class WebRTCSignalingClient {
             System.out.printf("[SignalingClient] 📞 Sending call request to %s (audio=%b, video=%b)%n", 
                 targetUsername, audioEnabled, videoEnabled);
             
+            // Generate unique call ID
+            String callId = java.util.UUID.randomUUID().toString();
+            
             WebRTCSignal signal = WebRTCSignal.newBuilder()
                 .setType(SignalType.CALL_REQUEST)
                 .setFrom(myUsername)
                 .setTo(targetUsername)
+                .setCallId(callId)
                 .setAudioEnabled(audioEnabled)
                 .setVideoEnabled(videoEnabled)
                 .setTimestamp(System.currentTimeMillis())
                 .build();
             
-            WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
-            
-            if (response.getSuccess()) {
-                String callId = response.getCallId();
-                System.out.printf("[SignalingClient] ✅ Call request sent, callId: %s%n", callId);
+            // 🔧 FIX: Use stream instead of blocking stub!
+            if (streamActive && signalingStreamOut != null) {
+                System.out.printf("[SignalingClient] 📤 Sending CALL_REQUEST via stream (callId: %s)%n", callId);
+                signalingStreamOut.onNext(signal);
                 future.complete(callId);
             } else {
-                System.err.printf("[SignalingClient] ❌ Call request failed: %s%n", response.getMessage());
-                future.completeExceptionally(new Exception(response.getMessage()));
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                
+                if (response.getSuccess()) {
+                    String responseCallId = response.getCallId();
+                    System.out.printf("[SignalingClient] ✅ Call request sent (unary), callId: %s%n", responseCallId);
+                    future.complete(responseCallId);
+                } else {
+                    System.err.printf("[SignalingClient] ❌ Call request failed: %s%n", response.getMessage());
+                    future.completeExceptionally(new Exception(response.getMessage()));
+                }
             }
             
         } catch (Exception e) {
@@ -415,6 +427,7 @@ public class WebRTCSignalingClient {
             
             // Send initial registration signal
             WebRTCSignal registrationSignal = WebRTCSignal.newBuilder()
+                .setType(SignalType.REGISTRATION)
                 .setFrom(myUsername)
                 .setTo("")  // Empty for registration
                 .setTimestamp(System.currentTimeMillis())

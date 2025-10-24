@@ -1084,27 +1084,47 @@ public void sendFriendRequest(FriendRequest request, StreamObserver<FriendRespon
 			@Override
 			public void onNext(SafeRoomProto.WebRTCSignal signal) {
 				try {
-					// First signal should register the user
+					System.out.printf("[WebRTC-Stream] 📥 Received signal: type=%s, from=%s, to=%s%n",
+						signal.getType(), signal.getFrom(), signal.getTo());
+					
+					// Handle REGISTRATION signal type
+					if (signal.getType() == SafeRoomProto.WebRTCSignal.SignalType.REGISTRATION) {
+						username = signal.getFrom();
+						WebRTCSessionManager.registerSignalingStream(username, responseObserver);
+						System.out.printf("[WebRTC-Stream] 🔌 User registered: %s%n", username);
+						return; // Don't forward registration
+					}
+					
+					// If not registered yet, use first signal's sender as username (backward compatibility)
 					if (username == null) {
 						username = signal.getFrom();
 						WebRTCSessionManager.registerSignalingStream(username, responseObserver);
-						System.out.printf("[WebRTC-Stream] 🔌 User connected: %s%n", username);
-						return; // 🔧 FIX: Don't forward registration signal!
+						System.out.printf("[WebRTC-Stream] 🔌 User connected (legacy): %s%n", username);
+						// Continue to forward this signal since it's not a registration
 					}
 					
 					// Forward signal to target user
 					String target = signal.getTo();
 					if (target == null || target.isEmpty()) {
-						System.err.printf("[WebRTC-Stream] ⚠️ Empty target from %s - ignoring%n", username);
-						return; // 🔧 FIX: Ignore signals with no target
+						System.err.printf("[WebRTC-Stream] ⚠️ Empty target from %s - ignoring signal type: %s%n", 
+							username, signal.getType());
+						return; // Ignore signals with no target
 					}
 					
+					System.out.printf("[WebRTC-Stream] 🎯 Attempting to forward %s from %s to %s%n",
+						signal.getType(), username, target);
+					
 					if (WebRTCSessionManager.hasSignalingStream(target)) {
-						WebRTCSessionManager.sendSignalToUser(target, signal);
-						System.out.printf("[WebRTC-Stream] 📤 Forwarded %s: %s -> %s%n", 
-							signal.getType(), username, target);
+						boolean sent = WebRTCSessionManager.sendSignalToUser(target, signal);
+						if (sent) {
+							System.out.printf("[WebRTC-Stream] ✅ Successfully forwarded %s: %s -> %s%n", 
+								signal.getType(), username, target);
+						} else {
+							System.err.printf("[WebRTC-Stream] ❌ Failed to forward signal to %s%n", target);
+						}
 					} else {
-						System.err.printf("[WebRTC-Stream] ❌ Target user not connected: %s%n", target);
+						System.err.printf("[WebRTC-Stream] ❌ Target user not connected: %s (registered users: %s)%n", 
+							target, WebRTCSessionManager.getRegisteredUsers());
 					}
 					
 				} catch (Exception e) {
