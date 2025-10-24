@@ -363,14 +363,14 @@ public class ChatViewController {
             // Get CallManager instance
             CallManager callManager = CallManager.getInstance();
             
-            // Check if already initialized
-            if (callManager.getCurrentState() == CallManager.CallState.IDLE) {
-                // Not initialized yet - initialize now
+            // 🔧 FIX: Check if initialized instead of checking state
+            if (!callManager.isInitialized()) {
+                System.out.println("[ChatView] ⚠️ CallManager not initialized - initializing now");
                 callManager.initialize(myUsername);
-                
-                // Setup callbacks
-                setupCallManagerCallbacks(callManager);
             }
+            
+            // Setup callbacks if not already done (safe to call multiple times)
+            setupCallManagerCallbacks(callManager);
             
             // Check if not already in a call
             if (callManager.isInCall()) {

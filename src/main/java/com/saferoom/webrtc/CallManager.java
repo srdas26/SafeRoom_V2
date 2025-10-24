@@ -17,6 +17,7 @@ public class CallManager {
     
     private String myUsername;
     private WebRTCSignalingClient signalingClient;
+    private boolean isInitialized = false; // 🔧 Track initialization state
     
     // Current call state
     private CallState currentState = CallState.IDLE;
@@ -82,6 +83,12 @@ public class CallManager {
      * Initialize call manager
      */
     public void initialize(String username) {
+        // 🔧 Prevent re-initialization
+        if (isInitialized) {
+            System.out.printf("[CallManager] ⚠️ Already initialized for user: %s (current: %s)%n", myUsername, username);
+            return;
+        }
+        
         this.myUsername = username;
         
         System.out.printf("[CallManager] 🔧 Initializing for user: %s%n", username);
@@ -100,7 +107,16 @@ public class CallManager {
         // Start signaling stream for real-time signals
         signalingClient.startSignalingStream();
         
+        this.isInitialized = true; // 🔧 Mark as initialized
+        
         System.out.println("[CallManager] ✅ Initialization complete");
+    }
+    
+    /**
+     * Check if CallManager is initialized
+     */
+    public boolean isInitialized() {
+        return isInitialized;
     }
     
     // ===============================

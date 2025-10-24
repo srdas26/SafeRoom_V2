@@ -3,6 +3,7 @@ package com.saferoom.gui.controller;
 import com.jfoenix.controls.JFXButton;
 import com.saferoom.gui.MainApp;
 import com.saferoom.gui.utils.UserSession;
+import com.saferoom.webrtc.CallManager;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
@@ -130,8 +131,21 @@ public class MainController {
             userAvatar.setText("U"); // You can replace this with actual username first letter
         }
         
-        // 🎯 P2P Registration: Register self to signaling server
+        // 🔧 Initialize WebRTC CallManager on startup
         String currentUsername = UserSession.getInstance().getDisplayName();
+        if (currentUsername != null && !currentUsername.equals("Username")) {
+            System.out.printf("[MainController] 🎬 Initializing CallManager for user: %s%n", currentUsername);
+            try {
+                CallManager callManager = CallManager.getInstance();
+                callManager.initialize(currentUsername);
+                System.out.println("[MainController] ✅ CallManager initialized - ready to receive calls");
+            } catch (Exception e) {
+                System.err.printf("[MainController] ❌ Failed to initialize CallManager: %s%n", e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
+        // 🎯 P2P Registration: Register self to signaling server
         if (currentUsername != null && !currentUsername.equals("Username")) {
             // com.saferoom.p2p.P2PConnectionManager.getInstance().registerSelf(currentUsername); // P2P system removed
             System.out.println("📝 P2P registration disabled - using server relay only");
