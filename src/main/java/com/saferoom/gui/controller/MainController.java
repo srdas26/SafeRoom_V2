@@ -5,6 +5,7 @@ import com.saferoom.gui.MainApp;
 import com.saferoom.gui.utils.UserSession;
 import com.saferoom.webrtc.CallManager;
 import com.saferoom.gui.dialog.IncomingCallDialog;
+import com.saferoom.gui.dialog.ActiveCallDialog;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -745,7 +746,24 @@ public class MainController {
                         if (accepted) {
                             System.out.printf("[MainController] ✅ Call accepted from: %s (callId: %s)%n", 
                                 callInfo.callerUsername, callInfo.callId);
+                            
+                            // Close incoming dialog
+                            dialog.close();
+                            
+                            // Accept the call
                             callManager.acceptCall(callInfo.callId);
+                            
+                            // Open ActiveCallDialog
+                            Platform.runLater(() -> {
+                                ActiveCallDialog activeDialog = new ActiveCallDialog(
+                                    callInfo.callerUsername,
+                                    callInfo.callId,
+                                    callInfo.videoEnabled,
+                                    callManager
+                                );
+                                activeDialog.show();
+                                System.out.println("[MainController] 📺 ActiveCallDialog opened after accepting call");
+                            });
                         } else {
                             System.out.printf("[MainController] ❌ Call rejected from: %s (callId: %s)%n", 
                                 callInfo.callerUsername, callInfo.callId);

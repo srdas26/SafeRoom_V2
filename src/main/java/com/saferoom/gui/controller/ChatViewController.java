@@ -48,6 +48,11 @@ public class ChatViewController {
     private String currentChannelId;
     private ChatService chatService;
     private ObservableList<Message> messages;
+    
+    // WebRTC call dialog references
+    private OutgoingCallDialog currentOutgoingDialog;
+    private IncomingCallDialog currentIncomingDialog;
+    private ActiveCallDialog currentActiveCallDialog;
 
     @FXML
     public void initialize() {
@@ -388,14 +393,12 @@ public class ChatViewController {
                         String callMsg = videoEnabled ? "📹 Starting video call..." : "📞 Starting audio call...";
                         chatService.sendMessage(currentChannelId, callMsg, currentUser);
                         
-                        // Open OutgoingCallDialog
-                        OutgoingCallDialog outgoingDialog = new OutgoingCallDialog(
+                        // Open OutgoingCallDialog and store reference
+                        currentOutgoingDialog = new OutgoingCallDialog(
                             targetUsername, callId, videoEnabled
                         );
-                        outgoingDialog.show();
                         
-                        // Store reference for later updates
-                        // (In real implementation, store in a map with callId as key)
+                        currentOutgoingDialog.show();
                     });
                 })
                 .exceptionally(e -> {
@@ -446,7 +449,23 @@ public class ChatViewController {
                 String msg = "✅ Call accepted - connecting...";
                 chatService.sendMessage(currentChannelId, msg, currentUser);
                 
-                // TODO: Update OutgoingCallDialog to show "Call accepted..."
+                // Close OutgoingCallDialog if it exists
+                if (currentOutgoingDialog != null) {
+                    currentOutgoingDialog.close();
+                    currentOutgoingDialog = null;
+                }
+                
+                // Open ActiveCallDialog
+                if (currentActiveCallDialog == null) {
+                    currentActiveCallDialog = new ActiveCallDialog(
+                        currentChannelId, 
+                        callId, 
+                        false, // videoEnabled - get from call state
+                        callManager
+                    );
+                    currentActiveCallDialog.show();
+                    System.out.println("[ChatView] 📺 ActiveCallDialog opened after call accepted");
+                }
             });
         });
         
@@ -491,9 +510,21 @@ public class ChatViewController {
                 String msg = "📴 Call ended";
                 chatService.sendMessage(currentChannelId, msg, currentUser);
                 
-                showAlert("Call Ended", "The call has ended.", Alert.AlertType.INFORMATION);
+                // Close all call dialogs
+                if (currentOutgoingDialog != null) {
+                    currentOutgoingDialog.close();
+                    currentOutgoingDialog = null;
+                }
+                if (currentIncomingDialog != null) {
+                    currentIncomingDialog.close();
+                    currentIncomingDialog = null;
+                }
+                if (currentActiveCallDialog != null) {
+                    currentActiveCallDialog.close();
+                    currentActiveCallDialog = null;
+                }
                 
-                // TODO: Close any open call dialogs
+                showAlert("Call Ended", "The call has ended.", Alert.AlertType.INFORMATION);
             });
         });
     }
