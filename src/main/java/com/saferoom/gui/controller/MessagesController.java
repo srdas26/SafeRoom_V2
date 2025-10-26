@@ -226,9 +226,9 @@ public class MessagesController {
             return;
         }
         
-        // 🆕 Check if P2P already established at NatAnalyzer level (incoming connections)
+        // Check if P2P already established
         if (com.saferoom.natghost.NatAnalyzer.isP2PActive(username)) {
-            System.out.printf("[P2P] ✅ P2P already active (from activePeers) for %s%n", username);
+            System.out.printf("[P2P] ✅ P2P already active for %s%n", username);
             connectionStatus.put(username, "P2P Active");
             updateContactStatus(username, "🔗 P2P Connected");
             return;
