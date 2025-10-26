@@ -53,6 +53,8 @@ public class ChatViewController {
     private OutgoingCallDialog currentOutgoingDialog;
     private IncomingCallDialog currentIncomingDialog;
     private ActiveCallDialog currentActiveCallDialog;
+    private boolean callbacksSetup = false; // Flag to prevent multiple callback registrations
+    private boolean currentCallVideoEnabled = false; // Track if current call is video or audio-only
 
     @FXML
     public void initialize() {
@@ -389,6 +391,9 @@ public class ChatViewController {
                     javafx.application.Platform.runLater(() -> {
                         System.out.printf("[ChatView] ✅ Call started: %s%n", callId);
                         
+                        // Store video setting for this call
+                        currentCallVideoEnabled = videoEnabled;
+                        
                         // Show "Calling..." message in chat
                         String callMsg = videoEnabled ? "📹 Starting video call..." : "📞 Starting audio call...";
                         chatService.sendMessage(currentChannelId, callMsg, currentUser);
@@ -420,6 +425,15 @@ public class ChatViewController {
      * Setup CallManager callbacks
      */
     private void setupCallManagerCallbacks(CallManager callManager) {
+        // Only setup callbacks once
+        if (callbacksSetup) {
+            System.out.println("[ChatView] ⚠️ Callbacks already setup - skipping");
+            return;
+        }
+        
+        callbacksSetup = true;
+        System.out.println("[ChatView] 🔧 Setting up CallManager callbacks (one-time setup)");
+        
         // Incoming call
         callManager.setOnIncomingCallCallback(info -> {
             javafx.application.Platform.runLater(() -> {
@@ -444,7 +458,7 @@ public class ChatViewController {
         // Call accepted
         callManager.setOnCallAcceptedCallback(callId -> {
             javafx.application.Platform.runLater(() -> {
-                System.out.printf("[ChatView] ✅ Call accepted: %s%n", callId);
+                System.out.printf("[ChatView] ✅ Call accepted: %s (video=%b)%n", callId, currentCallVideoEnabled);
                 
                 String msg = "✅ Call accepted - connecting...";
                 chatService.sendMessage(currentChannelId, msg, currentUser);
@@ -455,16 +469,16 @@ public class ChatViewController {
                     currentOutgoingDialog = null;
                 }
                 
-                // Open ActiveCallDialog
+                // Open ActiveCallDialog with correct video setting
                 if (currentActiveCallDialog == null) {
                     currentActiveCallDialog = new ActiveCallDialog(
                         currentChannelId, 
                         callId, 
-                        false, // videoEnabled - get from call state
+                        currentCallVideoEnabled, // Use saved video setting
                         callManager
                     );
                     currentActiveCallDialog.show();
-                    System.out.println("[ChatView] 📺 ActiveCallDialog opened after call accepted");
+                    System.out.printf("[ChatView] 📺 ActiveCallDialog opened (video=%b)%n", currentCallVideoEnabled);
                 }
             });
         });
@@ -489,16 +503,9 @@ public class ChatViewController {
                 String msg = "🔗 Call connected!";
                 chatService.sendMessage(currentChannelId, msg, currentUser);
                 
-                // Open ActiveCallDialog
-                // Get current call info from CallManager
-                String remoteUsername = currentChannelId; // or get from CallManager
-                String callId = "current-call-id"; // Should get from CallManager
-                boolean videoEnabled = true; // Should get from CallManager state
-                
-                ActiveCallDialog activeDialog = new ActiveCallDialog(
-                    remoteUsername, callId, videoEnabled, callManager
-                );
-                activeDialog.show();
+                // DON'T open ActiveCallDialog here - it's already opened in onCallAcceptedCallback
+                // Just log the connection status
+                System.out.println("[ChatView] ✅ P2P connection established - ActiveCallDialog already open");
             });
         });
         
