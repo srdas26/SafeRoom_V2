@@ -403,9 +403,8 @@ public class WebRTCClient {
             localVideoTrack = null;
         }
         
-        if (onConnectionClosedCallback != null) {
-            onConnectionClosedCallback.run();
-        }
+        // DON'T call onConnectionClosedCallback here - causes infinite recursion
+        // CallManager.cleanup() already calls this method, no need for callback loop
         
         System.out.println("[WebRTC] ✅ Connection closed");
     }

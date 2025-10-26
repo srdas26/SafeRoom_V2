@@ -548,15 +548,23 @@ public class CallManager {
     private void cleanup() {
         System.out.println("[CallManager] 🧹 Cleaning up call resources...");
         
-        if (webrtcClient != null) {
-            webrtcClient.close();
-            webrtcClient = null;
+        // Prevent infinite recursion: check if already cleaning up
+        if (currentState == CallState.IDLE) {
+            System.out.println("[CallManager] ⚠️ Already cleaned up, skipping");
+            return;
         }
         
+        // Set state to IDLE immediately to prevent re-entry
         this.currentState = CallState.IDLE;
         this.currentCallId = null;
         this.remoteUsername = null;
         this.isOutgoingCall = false;
+        
+        // Now close WebRTC connection (this may trigger callbacks, but state is already IDLE)
+        if (webrtcClient != null) {
+            webrtcClient.close();
+            webrtcClient = null;
+        }
         
         System.out.println("[CallManager] ✅ Cleanup complete");
     }
