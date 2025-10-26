@@ -201,12 +201,9 @@ public class CallManager {
         if (success) {
             this.currentState = CallState.CONNECTING;
             
-            // Create SDP answer
-            webrtcClient.createAnswer().thenAccept(sdp -> {
-                // Send ANSWER to caller
-                signalingClient.sendAnswer(callId, remoteUsername, sdp);
-                System.out.println("[CallManager] 📥 Answer sent");
-            });
+            // 🔧 DON'T create answer here! Wait for OFFER to arrive first.
+            // Answer will be created in handleOffer() after remote description is set.
+            System.out.println("[CallManager] ⏳ Waiting for SDP offer from caller...");
             
             if (onCallAcceptedCallback != null) {
                 onCallAcceptedCallback.accept(callId);
@@ -438,6 +435,19 @@ public class CallManager {
         
         // Set remote description
         webrtcClient.setRemoteDescription("offer", signal.getSdp());
+        
+        // 🔧 If we're the callee (incoming call accepted), create answer now
+        if (!isOutgoingCall && currentState == CallState.CONNECTING) {
+            System.out.println("[CallManager] 📝 Creating SDP answer (after remote offer set)...");
+            webrtcClient.createAnswer().thenAccept(sdp -> {
+                // Send ANSWER to caller
+                signalingClient.sendAnswer(currentCallId, remoteUsername, sdp);
+                System.out.println("[CallManager] 📥 Answer sent to caller");
+            }).exceptionally(ex -> {
+                System.err.printf("[CallManager] ❌ Failed to create answer: %s%n", ex.getMessage());
+                return null;
+            });
+        }
     }
     
     /**
