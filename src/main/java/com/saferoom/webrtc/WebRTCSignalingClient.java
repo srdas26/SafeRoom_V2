@@ -398,18 +398,29 @@ public class WebRTCSignalingClient {
             StreamObserver<WebRTCSignal> streamIn = new StreamObserver<WebRTCSignal>() {
                 @Override
                 public void onNext(WebRTCSignal signal) {
-                    System.out.printf("[SignalingClient] 📨 Received signal: %s from %s%n", 
-                        signal.getType(), signal.getFrom());
+                    System.out.printf("[SignalingClient] 📨 Received signal: %s from %s (to: %s, callId: %s)%n", 
+                        signal.getType(), signal.getFrom(), signal.getTo(), signal.getCallId());
+                    
+                    // 🔧 DEBUG: Check if callback is set
+                    if (onIncomingSignalCallback == null) {
+                        System.err.println("[SignalingClient] ❌ WARNING: onIncomingSignalCallback is NULL!");
+                        return;
+                    }
                     
                     // Forward to callback
-                    if (onIncomingSignalCallback != null) {
+                    try {
                         onIncomingSignalCallback.accept(signal);
+                        System.out.printf("[SignalingClient] ✅ Signal forwarded to CallManager: %s%n", signal.getType());
+                    } catch (Exception e) {
+                        System.err.printf("[SignalingClient] ❌ Error in callback: %s%n", e.getMessage());
+                        e.printStackTrace();
                     }
                 }
                 
                 @Override
                 public void onError(Throwable t) {
                     System.err.printf("[SignalingClient] ❌ Stream error: %s%n", t.getMessage());
+                    t.printStackTrace();
                     streamActive = false;
                     signalingStreamOut = null;
                 }
@@ -467,15 +478,21 @@ public class WebRTCSignalingClient {
      */
     public boolean sendSignalViaStream(WebRTCSignal signal) {
         if (!streamActive || signalingStreamOut == null) {
-            System.err.println("[SignalingClient] ❌ Stream not active");
+            System.err.printf("[SignalingClient] ❌ Stream not active (streamActive=%b, streamOut=%s)%n", 
+                streamActive, (signalingStreamOut == null ? "null" : "exists"));
             return false;
         }
         
         try {
+            System.out.printf("[SignalingClient] 📤 Sending %s via stream (streamActive=%b)%n", 
+                signal.getType(), streamActive);
             signalingStreamOut.onNext(signal);
+            System.out.printf("[SignalingClient] ✅ %s sent successfully%n", signal.getType());
             return true;
         } catch (Exception e) {
-            System.err.printf("[SignalingClient] ❌ Error sending via stream: %s%n", e.getMessage());
+            System.err.printf("[SignalingClient] ❌ Error sending %s via stream: %s%n", 
+                signal.getType(), e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
