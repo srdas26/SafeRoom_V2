@@ -2,6 +2,7 @@ package com.saferoom.webrtc;
 
 import dev.onvoid.webrtc.*;
 import dev.onvoid.webrtc.media.*;
+import dev.onvoid.webrtc.media.audio.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.List;
@@ -44,8 +45,27 @@ public class WebRTCClient {
         System.out.println("[WebRTC] 🔧 Initializing WebRTC with native library...");
         
         try {
-            // Try to initialize WebRTC native library
-            factory = new PeerConnectionFactory();
+            // Get default audio devices
+            AudioDevice defaultMic = MediaDevices.getDefaultAudioCaptureDevice();
+            AudioDevice defaultSpeaker = MediaDevices.getDefaultAudioRenderDevice();
+            
+            // Create and configure AudioDeviceModule
+            AudioDeviceModule audioModule = new AudioDeviceModule();
+            
+            if (defaultMic != null) {
+                System.out.println("[WebRTC] 🎤 Default microphone: " + defaultMic.getName());
+                audioModule.setRecordingDevice(defaultMic);
+                audioModule.initRecording();
+            }
+            
+            if (defaultSpeaker != null) {
+                System.out.println("[WebRTC] 🔊 Default speaker: " + defaultSpeaker.getName());
+                audioModule.setPlayoutDevice(defaultSpeaker);
+                audioModule.initPlayout();
+            }
+            
+            // Initialize factory with audio device module
+            factory = new PeerConnectionFactory(audioModule);
             
             initialized = true;
             System.out.println("[WebRTC] ✅ WebRTC initialized successfully with native library");
@@ -147,7 +167,14 @@ public class WebRTCClient {
                 @Override
                 public void onTrack(RTCRtpTransceiver transceiver) {
                     MediaStreamTrack track = transceiver.getReceiver().getTrack();
-                    System.out.printf("[WebRTC] 📺 Remote track received: %s%n", track.getKind());
+                    System.out.printf("[WebRTC] 📺 Remote track received: %s (kind=%s)%n", 
+                        track.getId(), track.getKind());
+                    
+                    // Handle audio track automatically
+                    if (track.getKind().equals("audio") && track instanceof AudioTrack) {
+                        handleRemoteAudioTrack((AudioTrack) track);
+                    }
+                    
                     if (onRemoteTrackCallback != null) {
                         onRemoteTrackCallback.accept(track);
                     }
@@ -381,6 +408,61 @@ public class WebRTCClient {
     // ===============================
     // Media Control
     // ===============================
+    
+    /**
+     * Add audio track to peer connection for microphone capture.
+     * This triggers ICE candidate generation.
+     */
+    public void addAudioTrack() {
+        if (factory == null) {
+            System.err.println("[WebRTC] ❌ Cannot add audio track - factory not initialized");
+            return;
+        }
+        
+        if (peerConnection == null) {
+            System.err.println("[WebRTC] ❌ Cannot add audio track - peer connection not created");
+            return;
+        }
+        
+        try {
+            System.out.println("[WebRTC] 🎤 Adding audio track...");
+            
+            // Create audio source (factory already has AudioDeviceModule configured)
+            AudioTrackSource audioSource = factory.createAudioSource(null);
+            
+            // Create audio track with a unique ID
+            AudioTrack audioTrack = factory.createAudioTrack("audio0", audioSource);
+            
+            // Add track to peer connection with stream ID
+            peerConnection.addTrack(audioTrack, List.of("stream1"));
+            
+            System.out.println("[WebRTC] ✅ Audio track added successfully");
+            
+            // Store reference for cleanup
+            this.localAudioTrack = audioTrack;
+            
+        } catch (Exception e) {
+            System.err.println("[WebRTC] ❌ Failed to add audio track: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Handle remote audio track (automatically plays received audio)
+     */
+    private void handleRemoteAudioTrack(AudioTrack audioTrack) {
+        System.out.println("[WebRTC] 🔊 Setting up remote audio playback...");
+        
+        // Add sink to monitor audio data (optional - for debugging)
+        AudioTrackSink sink = (data, bitsPerSample, sampleRate, channels, frames) -> {
+            // Audio data is automatically played through speakers by AudioDeviceModule
+            // This callback is just for monitoring/debugging
+            // System.out.printf("[WebRTC] 🔊 Receiving audio: %d Hz, %d channels%n", sampleRate, channels);
+        };
+        
+        audioTrack.addSink(sink);
+        System.out.println("[WebRTC] ✅ Remote audio track ready");
+    }
     
     public void toggleAudio(boolean enabled) {
         this.audioEnabled = enabled;

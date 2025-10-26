@@ -150,6 +150,12 @@ public class CallManager {
                 webrtcClient = new WebRTCClient(callId, targetUsername);
                 webrtcClient.createPeerConnection(audioEnabled, videoEnabled);
                 
+                // 🎤 Add audio track if audio enabled
+                if (audioEnabled) {
+                    System.out.println("[CallManager] 🎤 Adding audio track for outgoing call...");
+                    webrtcClient.addAudioTrack();
+                }
+                
                 // Set up callbacks
                 setupWebRTCCallbacks();
                 
@@ -360,6 +366,13 @@ public class CallManager {
         // Create WebRTC peer connection
         webrtcClient = new WebRTCClient(currentCallId, remoteUsername);
         webrtcClient.createPeerConnection(signal.getAudioEnabled(), signal.getVideoEnabled());
+        
+        // 🎤 Add audio track if audio enabled
+        if (signal.getAudioEnabled()) {
+            System.out.println("[CallManager] 🎤 Adding audio track for incoming call...");
+            webrtcClient.addAudioTrack();
+        }
+        
         setupWebRTCCallbacks();
         
         // Notify GUI
