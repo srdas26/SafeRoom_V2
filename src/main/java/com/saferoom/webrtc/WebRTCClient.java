@@ -44,17 +44,18 @@ public class WebRTCClient {
         System.out.println("[WebRTC] 🔧 Initializing WebRTC with native library...");
         
         try {
-            // Initialize WebRTC native library
+            // Try to initialize WebRTC native library
             factory = new PeerConnectionFactory();
             
             initialized = true;
-            System.out.println("[WebRTC] ✅ WebRTC initialized successfully");
-        } catch (Exception e) {
-            System.err.printf("[WebRTC] ❌ Failed to initialize: %s%n", e.getMessage());
-            e.printStackTrace();
-            // Fallback to mock mode
+            System.out.println("[WebRTC] ✅ WebRTC initialized successfully with native library");
+        } catch (Throwable e) {
+            // Fallback to mock mode (native library not available)
+            System.err.printf("[WebRTC] ⚠️ Native library failed to load: %s%n", e.getMessage());
+            System.out.println("[WebRTC] ⚠️ Running in MOCK mode (signaling will work, but no real media)");
+            
+            factory = null;
             initialized = true;
-            System.out.println("[WebRTC] ⚠️ Running in MOCK mode (native library not available)");
         }
     }
     
