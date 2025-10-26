@@ -439,8 +439,12 @@ public class ChatViewController {
         // Incoming call
         callManager.setOnIncomingCallCallback(info -> {
             javafx.application.Platform.runLater(() -> {
-                System.out.printf("[ChatView] 📞 Incoming call from %s (callId: %s)%n", 
-                    info.callerUsername, info.callId);
+                System.out.printf("[ChatView] 📞 Incoming call from %s (callId: %s, video=%b)%n", 
+                    info.callerUsername, info.callId, info.videoEnabled);
+                
+                // 🔧 CRITICAL: Store video setting for incoming call
+                currentCallVideoEnabled = info.videoEnabled;
+                System.out.printf("[ChatView] 🎬 Video setting saved: %b%n", currentCallVideoEnabled);
                 
                 // Show IncomingCallDialog
                 IncomingCallDialog incomingDialog = new IncomingCallDialog(
@@ -552,7 +556,11 @@ public class ChatViewController {
         // Remote track received (for video)
         callManager.setOnRemoteTrackCallback(track -> {
             javafx.application.Platform.runLater(() -> {
-                System.out.printf("[ChatView] 📺 Remote track received: kind=%s%n", track.getKind());
+                System.out.printf("[ChatView] 📺 Remote track received: kind=%s, id=%s%n", 
+                    track.getKind(), track.getId());
+                System.out.printf("[ChatView] 🔍 Debug: currentActiveCallDialog=%s, instanceof VideoTrack=%b%n",
+                    currentActiveCallDialog != null ? "EXISTS" : "NULL",
+                    track instanceof VideoTrack);
                 
                 // If it's a video track and we have an active call dialog, attach it
                 if (track instanceof VideoTrack && currentActiveCallDialog != null) {
@@ -561,6 +569,8 @@ public class ChatViewController {
                     System.out.println("[ChatView] 📹 Remote video attached to dialog");
                 } else if (!(track instanceof VideoTrack)) {
                     System.out.println("[ChatView] 🎤 Remote audio track (handled by WebRTC)");
+                } else if (currentActiveCallDialog == null) {
+                    System.err.println("[ChatView] ❌ ERROR: Remote video track received but dialog is NULL!");
                 }
             });
         });
