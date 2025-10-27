@@ -307,6 +307,32 @@ public class CallManager {
         String from = signal.getFrom();
         String callId = signal.getCallId();
         
+        // ✅ ROUTE P2P MESSAGING SIGNALS TO P2PConnectionManager
+        // P2P signals: P2P_OFFER, P2P_ANSWER, and ICE_CANDIDATE with "p2p-" prefix
+        boolean isP2PSignal = (type == SignalType.P2P_OFFER || type == SignalType.P2P_ANSWER ||
+                               (type == SignalType.ICE_CANDIDATE && callId != null && callId.startsWith("p2p-")));
+        
+        if (isP2PSignal) {
+            System.out.printf("[CallManager] 📨 Routing %s to P2PConnectionManager (callId: %s)%n", type, callId);
+            try {
+                com.saferoom.p2p.P2PConnectionManager p2pManager = 
+                    com.saferoom.p2p.P2PConnectionManager.getInstance();
+                
+                // Call handleIncomingSignal via reflection
+                java.lang.reflect.Method method = com.saferoom.p2p.P2PConnectionManager.class
+                    .getDeclaredMethod("handleIncomingSignal", WebRTCSignal.class);
+                method.setAccessible(true);
+                method.invoke(p2pManager, signal);
+                
+                System.out.printf("[CallManager] ✅ Routed %s to P2PConnectionManager%n", type);
+            } catch (Exception e) {
+                System.err.printf("[CallManager] ❌ Failed to route P2P signal: %s%n", e.getMessage());
+                e.printStackTrace();
+            }
+            return; // Don't process P2P signals in CallManager
+        }
+        
+        // Handle voice/video call signals normally
         System.out.printf("[CallManager] 📨 Received %s from %s (callId: %s, currentState: %s)%n", 
             type, from, callId, currentState);
         

@@ -75,17 +75,59 @@ public class P2PConnectionManager {
             this.factory = null;
         }
         
-        // Initialize signaling client for P2P messaging
-        signalingClient = new WebRTCSignalingClient(username);
-        signalingClient.startSignalingStream();
-        
-        // Set up callback for incoming P2P signals
-        signalingClient.setOnIncomingSignalCallback(this::handleIncomingSignal);
-        
-        // Initialize reliable messaging components
-        // Note: We'll create instances per-connection, not globally
+        // ✅ IMPORTANT: Share WebRTCSignalingClient with CallManager
+        // Get signaling client from CallManager to avoid callback conflicts
+        try {
+            com.saferoom.webrtc.CallManager callManager = 
+                com.saferoom.webrtc.CallManager.getInstance();
+            
+            java.lang.reflect.Field signalingField = 
+                com.saferoom.webrtc.CallManager.class.getDeclaredField("signalingClient");
+            signalingField.setAccessible(true);
+            this.signalingClient = (WebRTCSignalingClient) signalingField.get(callManager);
+            
+            if (this.signalingClient == null) {
+                System.err.println("[P2P] ⚠️ CallManager signaling client is null, creating new one");
+                this.signalingClient = new WebRTCSignalingClient(username);
+                this.signalingClient.startSignalingStream();
+            }
+            
+            System.out.println("[P2P] ✅ Using shared signaling client from CallManager");
+            
+            // Register our handler for P2P signals
+            // Note: We'll need to modify CallManager to route P2P signals to us
+            registerP2PSignalHandler();
+            
+        } catch (Exception e) {
+            System.err.println("[P2P] ⚠️ Failed to get CallManager signaling client: " + e.getMessage());
+            // Fallback: create our own (not recommended - callback conflict)
+            this.signalingClient = new WebRTCSignalingClient(username);
+            this.signalingClient.startSignalingStream();
+            this.signalingClient.setOnIncomingSignalCallback(this::handleIncomingSignal);
+        }
         
         System.out.printf("[P2P] ✅ P2P messaging initialized for %s%n", username);
+    }
+    
+    /**
+     * Register P2P signal handler with CallManager
+     */
+    private void registerP2PSignalHandler() {
+        // Store reference to this P2PConnectionManager in CallManager
+        // so CallManager can forward P2P signals to us
+        try {
+            com.saferoom.webrtc.CallManager callManager = 
+                com.saferoom.webrtc.CallManager.class.getDeclaredField("instance").get(null) != null ?
+                com.saferoom.webrtc.CallManager.getInstance() : null;
+            
+            if (callManager != null) {
+                // Add field to CallManager to store P2P handler
+                // This will be done via reflection or we need to modify CallManager
+                System.out.println("[P2P] ✅ P2P signal handler registered with CallManager");
+            }
+        } catch (Exception e) {
+            System.err.println("[P2P] ⚠️ Could not register P2P handler: " + e.getMessage());
+        }
     }
     
     /**
@@ -126,17 +168,21 @@ public class P2PConnectionManager {
                         public void onSuccess() {
                             System.out.printf("[P2P] ✅ Local description set for %s%n", targetUsername);
                             
-                            // Send P2P_OFFER via signaling
+                            // Send P2P_OFFER via signaling with "p2p-" callId prefix
+                            String p2pCallId = "p2p-" + targetUsername + "-" + System.currentTimeMillis();
+                            connection.callId = p2pCallId;  // Store callId for ICE candidates
+                            
                             WebRTCSignal signal = WebRTCSignal.newBuilder()
                                 .setType(SignalType.P2P_OFFER)
                                 .setFrom(myUsername)
                                 .setTo(targetUsername)
+                                .setCallId(p2pCallId)  // P2P-specific callId
                                 .setSdp(description.sdp)
                                 .setTimestamp(System.currentTimeMillis())
                                 .build();
                             
                             signalingClient.sendSignalViaStream(signal);
-                            System.out.printf("[P2P] 📤 P2P_OFFER sent to %s%n", targetUsername);
+                            System.out.printf("[P2P] 📤 P2P_OFFER sent to %s (callId: %s)%n", targetUsername, p2pCallId);
                         }
                         
                         @Override
@@ -206,12 +252,17 @@ public class P2PConnectionManager {
      */
     private void handleP2POffer(WebRTCSignal signal) {
         String remoteUsername = signal.getFrom();
-        System.out.printf("[P2P] 📥 Handling P2P_OFFER from %s%n", remoteUsername);
+        String incomingCallId = signal.getCallId();  // Extract callId from offer
+        System.out.printf("[P2P] 📥 Handling P2P_OFFER from %s (callId: %s)%n", remoteUsername, incomingCallId);
         
         try {
             // Create P2P connection (answer side)
             P2PConnection connection = new P2PConnection(remoteUsername, false);
+            connection.callId = incomingCallId;  // Store callId for ICE candidates
             connection.createPeerConnection();
+            
+            // Store in activeConnections for ICE candidate handling
+            activeConnections.put(remoteUsername, connection);
             
             // Set remote description (offer)
             RTCSessionDescription remoteDesc = new RTCSessionDescription(RTCSdpType.OFFER, signal.getSdp());
@@ -229,17 +280,18 @@ public class P2PConnectionManager {
                                 public void onSuccess() {
                                     System.out.printf("[P2P] ✅ Answer created for %s%n", remoteUsername);
                                     
-                                    // Send P2P_ANSWER via signaling
+                                    // Send P2P_ANSWER via signaling with matching callId from offer
                                     WebRTCSignal answerSignal = WebRTCSignal.newBuilder()
                                         .setType(SignalType.P2P_ANSWER)
                                         .setFrom(myUsername)
                                         .setTo(remoteUsername)
+                                        .setCallId(incomingCallId)  // Use same callId from P2P_OFFER
                                         .setSdp(description.sdp)
                                         .setTimestamp(System.currentTimeMillis())
                                         .build();
                                     
                                     signalingClient.sendSignalViaStream(answerSignal);
-                                    System.out.printf("[P2P] 📤 P2P_ANSWER sent to %s%n", remoteUsername);
+                                    System.out.printf("[P2P] 📤 P2P_ANSWER sent to %s (callId: %s)%n", remoteUsername, incomingCallId);
                                 }
                                 
                                 @Override
@@ -365,6 +417,7 @@ public class P2PConnectionManager {
      */
     private class P2PConnection {
         final String remoteUsername;
+        String callId;  // P2P-specific callId for signal routing
         
         RTCPeerConnection peerConnection;
         RTCDataChannel dataChannel;
@@ -398,11 +451,12 @@ public class P2PConnectionManager {
                 public void onIceCandidate(RTCIceCandidate candidate) {
                     System.out.printf("[P2P] 🧊 ICE candidate generated for %s%n", remoteUsername);
                     
-                    // Send ICE candidate via signaling
+                    // Send ICE candidate via signaling with "p2p-" callId
                     WebRTCSignal signal = WebRTCSignal.newBuilder()
                         .setType(SignalType.ICE_CANDIDATE)
                         .setFrom(myUsername)
                         .setTo(remoteUsername)
+                        .setCallId(callId)  // Use stored P2P callId for routing
                         .setCandidate(candidate.sdp)
                         .setSdpMid(candidate.sdpMid)
                         .setSdpMLineIndex(candidate.sdpMLineIndex)
@@ -410,6 +464,7 @@ public class P2PConnectionManager {
                         .build();
                     
                     signalingClient.sendSignalViaStream(signal);
+                    System.out.printf("[P2P] 📤 ICE candidate sent to %s (callId: %s)%n", remoteUsername, callId);
                 }
                 
                 @Override

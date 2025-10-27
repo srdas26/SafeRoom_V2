@@ -226,9 +226,12 @@ public class MessagesController {
             return;
         }
         
-        // Check if P2P already established
-        if (com.saferoom.natghost.NatAnalyzer.isP2PActive(username)) {
-            System.out.printf("[P2P] ✅ P2P already active for %s%n", username);
+        // ✅ WEBRTC P2P: Check if P2P already established via WebRTC DataChannel
+        com.saferoom.p2p.P2PConnectionManager p2pManager = 
+            com.saferoom.p2p.P2PConnectionManager.getInstance();
+        
+        if (p2pManager.hasActiveConnection(username)) {
+            System.out.printf("[P2P] ✅ WebRTC P2P already active for %s%n", username);
             connectionStatus.put(username, "P2P Active");
             updateContactStatus(username, "🔗 P2P Connected");
             return;
@@ -252,13 +255,10 @@ public class MessagesController {
         // Mark as connecting BEFORE starting async operation
         connectionStatus.put(username, "Connecting...");
         updateContactStatus(username, "P2P connecting...");
-        System.out.printf("[P2P] 🚀 Starting P2P connection for %s%n", username);
+        System.out.printf("[P2P] 🚀 Starting WebRTC P2P connection for %s%n", username);
         
-        // Get current user
-        String myUsername = com.saferoom.gui.utils.UserSession.getInstance().getDisplayName();
-        
-        // Use ASYNC NON-BLOCKING version (no ForkJoinPool blocking)
-        ClientMenu.startP2PHolePunchAsync(myUsername, username)
+        // ✅ WEBRTC P2P: Use P2PConnectionManager to establish DataChannel
+        p2pManager.createConnection(username)
             .thenAcceptAsync(success -> {
                 // Update UI on JavaFX thread
                 javafx.application.Platform.runLater(() -> {
