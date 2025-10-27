@@ -158,6 +158,9 @@ public class P2PConnectionManager {
             connection.createPeerConnection();
             connection.createDataChannel();
             
+            // Store in activeConnections immediately so we can handle P2P_ANSWER and ICE candidates
+            activeConnections.put(targetUsername, connection);
+            
             // Create offer and send via signaling
             connection.peerConnection.createOffer(new RTCOfferOptions(), new CreateSessionDescriptionObserver() {
                 @Override
@@ -434,15 +437,28 @@ public class P2PConnectionManager {
                 return;
             }
             
-            // Configure STUN servers for NAT traversal
+            // Configure STUN/TURN servers for NAT traversal
             List<RTCIceServer> iceServers = new ArrayList<>();
+            
+            // Google STUN servers
             RTCIceServer stunServer = new RTCIceServer();
             stunServer.urls.add("stun:stun.l.google.com:19302");
             stunServer.urls.add("stun:stun1.l.google.com:19302");
+            stunServer.urls.add("stun:stun2.l.google.com:19302");
             iceServers.add(stunServer);
+            
+            // TODO: Add TURN server for symmetric NAT
+            // RTCIceServer turnServer = new RTCIceServer();
+            // turnServer.urls.add("turn:your-turn-server.com:3478");
+            // turnServer.username = "username";
+            // turnServer.password = "password";
+            // iceServers.add(turnServer);
             
             RTCConfiguration config = new RTCConfiguration();
             config.iceServers = iceServers;
+            config.iceTransportPolicy = RTCIceTransportPolicy.ALL;  // Try all candidates (relay, srflx, host)
+            
+            System.out.printf("[P2P] 🔧 Configuring peer connection with %d ICE servers%n", iceServers.size());
             
             // Create peer connection
             peerConnection = factory.createPeerConnection(config, new PeerConnectionObserver() {
@@ -472,6 +488,24 @@ public class P2PConnectionManager {
                     
                     if (state == RTCIceConnectionState.CONNECTED || state == RTCIceConnectionState.COMPLETED) {
                         System.out.printf("[P2P] ✅ ICE connected with %s%n", remoteUsername);
+                    } else if (state == RTCIceConnectionState.FAILED) {
+                        System.err.printf("[P2P] ❌ ICE connection FAILED with %s%n", remoteUsername);
+                        System.err.println("[P2P] 💡 Possible causes:");
+                        System.err.println("    1. Both clients behind symmetric NAT (need TURN server)");
+                        System.err.println("    2. Firewall blocking UDP traffic");
+                        System.err.println("    3. Testing on localhost (try different networks)");
+                        System.err.println("    4. STUN servers unreachable");
+                        
+                        // Clean up failed connection
+                        activeConnections.remove(remoteUsername);
+                        pendingConnections.remove(remoteUsername);
+                        
+                        // TODO: Fallback to server relay
+                    } else if (state == RTCIceConnectionState.DISCONNECTED) {
+                        System.err.printf("[P2P] ⚠️ ICE disconnected with %s (may reconnect)%n", remoteUsername);
+                    } else if (state == RTCIceConnectionState.CLOSED) {
+                        System.out.printf("[P2P] 🔌 ICE connection closed with %s%n", remoteUsername);
+                        activeConnections.remove(remoteUsername);
                     }
                 }
                 
