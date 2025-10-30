@@ -552,7 +552,7 @@ public class P2PConnectionManager {
                                 active = true;
                                 activeConnections.put(remoteUsername, P2PConnection.this);
                                 
-                                // Initialize reliable messaging
+                                // Initialize reliable messaging (which also initializes file transfer)
                                 P2PConnection.this.initializeReliableMessaging();
                             }
                         }
@@ -667,8 +667,10 @@ public class P2PConnectionManager {
             
             System.out.printf("[P2P] ✅ Reliable messaging initialized for %s%n", remoteUsername);
             
-            // Also initialize file transfer
-            initializeFileTransfer();
+            // Also initialize file transfer (if not already initialized)
+            if (fileTransfer == null) {
+                initializeFileTransfer();
+            }
         }
         
         /**
