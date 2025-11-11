@@ -18,6 +18,13 @@ public class ClientMenu{
 	static{
 		channel = ManagedChannelBuilder.forAddress(Server, Port)
 					.usePlaintext()
+					.keepAliveTime(20, TimeUnit.SECONDS)
+					.keepAliveTimeout(10, TimeUnit.SECONDS)
+					.keepAliveWithoutCalls(true)
+					.idleTimeout(Long.MAX_VALUE, TimeUnit.DAYS)
+					.maxInboundMessageSize(10*1024*1024)
+					.enableRetry()
+					.maxRetryAttempts(5)
 					.build();
 	}
 		public static String Login(String username, String Password)

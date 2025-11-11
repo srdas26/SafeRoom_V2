@@ -22,6 +22,11 @@ public class StreamListener extends Thread {
 					.addService(new UDPHoleImpl())
 					.withChildOption(ChannelOption.SO_REUSEADDR, true)
 					.withOption(ChannelOption.SO_REUSEADDR, true)
+					.keepAliveTime(20, TimeUnit.SECONDS) 
+        			.keepAliveTimeout(10, TimeUnit.SECONDS) 
+        			.permitKeepAliveTime(10, TimeUnit.SECONDS) 
+        			.permitKeepAliveWithoutCalls(true) 
+        
 					.build()
 					.start();
 			
