@@ -564,6 +564,10 @@ public class NatAnalyzer {
         }
     }
 
+    // ============================================
+    // DEPRECATED: UDP P2P Testing (Legacy)
+    // ============================================
+    /*
     public static void main(String[] args) {
         if (args.length < 2) {
             System.err.println("Usage: NatAnalyzer <myUsername> <targetUsername>");
@@ -571,13 +575,14 @@ public class NatAnalyzer {
         }
         
         InetSocketAddress serverAddr =
-                new InetSocketAddress(SafeRoomServer.ServerIP, SafeRoomServer.udpPort1);
+                new InetSocketAddress(SafeRoomServer.ServerIP, 45000); // Old UDP port
         try {
             multiplexer(serverAddr, args[0], args[1]);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+    */
     
     // ============================================
     // USER REGISTRATION AND UNIDIRECTIONAL P2P

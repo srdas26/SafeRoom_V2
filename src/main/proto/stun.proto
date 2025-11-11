@@ -21,8 +21,6 @@ rpc GetProfile(ProfileRequest) returns (ProfileResponse);
 
 rpc SendFriendRequest(FriendRequest) returns (FriendResponse);
 
-rpc RegisterClient(Stun_Info) returns (Status);
-
 rpc GetPendingFriendRequests(Request_Client) returns (PendingRequestsResponse);
 
 rpc GetSentFriendRequests(Request_Client) returns (SentRequestsResponse);
@@ -42,30 +40,6 @@ rpc GetFriendshipStats(Request_Client) returns (FriendshipStatsResponse);
 rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 
 rpc EndUserSession(HeartbeatRequest) returns (Status);
-
-rpc GetStunInfo(Request_Client) returns (Stun_Info);
-
-rpc PunchTest(FromTo) returns (Status);
-
-rpc HandShake(HandshakeConfirm) returns (Status);
-
-rpc HeartBeat(Stun_Info) returns (Status);
-
-rpc Finish(Request_Client) returns (Status);
-
-rpc GetServerPublicKey(Empty) returns (PublicKeyMessage);
-
-rpc SendEncryptedAESKey(EncryptedAESKeyMessage) returns (Status);
-
-rpc GetEncryptedAESKey(RequestByClient_ID) returns (EncryptedAESKeyMessage);
-
-rpc SendEncryptedMessage(EncryptedPacket) returns (Status);
-
-rpc DecryptedMessage(EncryptedPacket) returns (DecryptedPacket);
-
-rpc SendPublicKey(SendPublicKeyRequest) returns (Status);
-
-rpc GetPublicKey(RequestByClient_ID) returns (PublicKeyMessage);
 
 // ===============================
 // WebRTC Signaling RPCs
@@ -94,74 +68,14 @@ message Verification {
 	optional string username = 1;
 	optional string verify = 2;
 }
-message Stun_Info{
-  string username = 1;
-  string ip = 2;
-  int32 port = 3;
-  optional bool state = 4;
-}
-
 
 message Request_Client {
     string username = 1;
 }
 
-message HandshakeConfirm {
-  string client_id = 1;
-  string target_id = 2;
-  int64 timestamp = 3;
-}
-
-message RelayInfo {
-  string relay_ip = 1;
-  int32 relay_port = 2;
-}
-
-message FromTo{
-    string me = 1;
-    string them = 2;
-}
-
-message SendPublicKeyRequest {
-  string base64_pubkey = 1;
-  string session_ID = 2;
-  string starter = 3;
-  string joiner = 4;
-}
-
 message Status {
   string message = 1;
   optional int32 code = 2; // 0 = OK, 1 = NOT_FOUND, 2 = ERROR, vs.
-}
-
-message PublicKeyMessage {
-  string base64_key = 1;
-  string username = 2;
-}
-
-message RequestByClient_ID {
-	string client_id = 1;
-}
-
-message Empty {}
-
-message EncryptedAESKeyMessage {
-  string client_id = 1;
-  string encrypted_key = 2;
-  
-}
-
-message EncryptedPacket {
-  string sender = 1;
-  string receiver = 2;
-  string payload = 3; // Base64 AES şifreli veri
-}
-
-message DecryptedPacket{
- string sendedBy = 1;
- string recvedBy = 2;
- string plaintext = 3;
-
 }
 
 message SearchRequest {

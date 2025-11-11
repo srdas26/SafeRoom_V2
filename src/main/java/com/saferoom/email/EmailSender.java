@@ -86,12 +86,12 @@ public class EmailSender {
                         String htmlBody = """
                                 <div style='min-height:100vh; background: radial-gradient(ellipse at 70% 30%, #2b2d42 0%, #1a1a2e 100%), url(https://www.transparenttextures.com/patterns/stardust.png); padding: 0; margin: 0;'>
                                     <div style='max-width: 500px; margin: 48px auto; background: rgba(30,34,60,0.85); border-radius: 18px; box-shadow: 0 8px 32px #0008, 0 1.5px 8px #00f2ff44; padding: 40px 28px; border: 1.5px solid #00f2ff33; backdrop-filter: blur(4px);'>
-                                        <div style='text-align:center; margin-bottom: 28px;'>
-                                            <img src='cid:verificateimg' alt='SafeRoom' style='width:72px; height:72px; border-radius:12px; box-shadow:0 0 16px #00f2ff88; background:#111;'/>
+                                        <div style='text-align:center; margin-bottom: 32px;'>
+                                            <img src='cid:verificateimg' alt='SafeRoom' style='width:128px; height:128px; border-radius:16px; box-shadow:0 0 24px #00f2ff99, 0 0 48px #00f2ff44; background:#0a0a14; padding:8px;'/>
                                         </div>
                                         <h2 style='color:#00f2ff; margin-bottom:18px; font-family: "Orbitron", Arial, sans-serif; letter-spacing:1px; text-shadow:0 2px 8px #00f2ff44;'>" + subject + "</h2>
                                         <div style='color:#e0e6f7; font-size:17px; line-height:1.7; text-shadow:0 1px 4px #0006;'>" + body.replace("\n", "<br>") + "</div>
-                                        <div style='margin-top:36px; text-align:center; color:#00f2ffcc; font-size:14px; letter-spacing:1px; text-shadow:0 1px 8px #00f2ff44;'>SafeRoom Security Team<br><span style='font-size:11px; color:#fff8; text-shadow:none;'>Exploring Security in the Universe</span></div>
+                                        <div style='margin-top:36px; text-align:center; color:#00f2ffcc; font-size:14px; letter-spacing:1px; text-shadow:0 1px 8px #00f2ff44;'>SafeRoom Security Team<br><span style='font-size:11px; color:#fff8; text-shadow:none;'>🔐 Exploring Security in the Universe 🌌</span></div>
                                     </div>
                                 </div>
                         """;
@@ -153,8 +153,8 @@ public class EmailSender {
         String htmlBody = """
                 <div style='min-height:100vh; background: radial-gradient(ellipse at 70% 30%, #2b2d42 0%, #1a1a2e 100%), url(https://www.transparenttextures.com/patterns/stardust.png); padding: 0; margin: 0;'>
                     <div style='max-width: 500px; margin: 48px auto; background: rgba(30,34,60,0.85); border-radius: 18px; box-shadow: 0 8px 32px #0008, 0 1.5px 8px #00f2ff44; padding: 40px 28px; border: 1.5px solid #00f2ff33; backdrop-filter: blur(4px);'>
-                        <div style='text-align:center; margin-bottom: 28px;'>
-                            <img src='cid:verificateimg' alt='SafeRoom' style='width:72px; height:72px; border-radius:12px; box-shadow:0 0 16px #00f2ff88; background:#111;'/>
+                        <div style='text-align:center; margin-bottom: 32px;'>
+                            <img src='cid:verificateimg' alt='SafeRoom' style='width:128px; height:128px; border-radius:16px; box-shadow:0 0 24px #00f2ff99, 0 0 48px #00f2ff44; background:#0a0a14; padding:8px;'/>
                         </div>
                         <h2 style='color:#00f2ff; margin-bottom:18px; font-family: "Orbitron", Arial, sans-serif; letter-spacing:1px; text-shadow:0 2px 8px #00f2ff44; text-align:center;'>🔐 Account Verification</h2>
                         
@@ -199,8 +199,8 @@ public class EmailSender {
         String htmlBody = """
                 <div style='min-height:100vh; background: radial-gradient(ellipse at 70% 30%, #2b2d42 0%, #1a1a2e 100%), url(https://www.transparenttextures.com/patterns/stardust.png); padding: 0; margin: 0;'>
                     <div style='max-width: 500px; margin: 48px auto; background: rgba(30,34,60,0.85); border-radius: 18px; box-shadow: 0 8px 32px #0008, 0 1.5px 8px #ff6b6b44; padding: 40px 28px; border: 1.5px solid #ff6b6b33; backdrop-filter: blur(4px);'>
-                        <div style='text-align:center; margin-bottom: 28px;'>
-                            <img src='cid:verificateimg' alt='SafeRoom' style='width:72px; height:72px; border-radius:12px; box-shadow:0 0 16px #ff6b6b88; background:#111;'/>
+                        <div style='text-align:center; margin-bottom: 32px;'>
+                            <img src='cid:verificateimg' alt='SafeRoom' style='width:128px; height:128px; border-radius:16px; box-shadow:0 0 24px #ff6b6b99, 0 0 48px #ff6b6b44; background:#0a0a14; padding:8px;'/>
                         </div>
                         <h2 style='color:#ff6b6b; margin-bottom:18px; font-family: "Orbitron", Arial, sans-serif; letter-spacing:1px; text-shadow:0 2px 8px #ff6b6b44; text-align:center;'>🔒 Password Reset Request</h2>
                         

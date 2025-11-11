@@ -6,16 +6,13 @@ import com.saferoom.grpc.SafeRoomProto.Status;
 import com.saferoom.grpc.UDPHoleGrpc;
 import com.saferoom.grpc.SafeRoomProto.Verification;
 import com.saferoom.server.SafeRoomServer;
-import com.saferoom.natghost.NatAnalyzer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 public class ClientMenu{
 	public static String Server = SafeRoomServer.ServerIP;
 	public static int Port = SafeRoomServer.grpcPort;
-	public static int UDP_Port = SafeRoomServer.udpPort1;
 
 	public static ManagedChannel channel;
 	static{
@@ -484,173 +481,6 @@ public class ClientMenu{
 		} catch (Exception e) {
 			System.err.println("[P2P] Error during user registration: " + e.getMessage());
 			e.printStackTrace();
-			return false;
-		}
-	}
-	
-	/**
-	 * ASYNC NON-BLOCKING P2P Connection Request
-	 * Start hole punch asynchronously and return CompletableFuture
-	 * 
-	 * @param myUsername Current user's username
-	 * @param targetUsername Target user to connect to
-	 * @return CompletableFuture<Boolean> that completes when P2P establishes
-	 */
-	public static java.util.concurrent.CompletableFuture<Boolean> startP2PHolePunchAsync(String myUsername, String targetUsername) {
-		try {
-			System.out.println("[P2P]Initiating ASYNC P2P request: " + myUsername + " -> " + targetUsername);
-			
-			// Create signaling server address
-			InetSocketAddress signalingServer = new InetSocketAddress(Server, UDP_Port);
-			
-			// Use new async unidirectional P2P request system
-			return NatAnalyzer.requestP2PConnectionAsync(myUsername, targetUsername, signalingServer)
-				.thenApply(success -> {
-					if (success) {
-						System.out.println("[P2P]Async P2P connection successful");
-					} else {
-						System.out.println("[P2P]Async P2P failed - will use server relay");
-					}
-					return success;
-				})
-				.exceptionally(e -> {
-					System.err.println("[P2P]Error during async P2P: " + e.getMessage());
-					return false;
-				});
-			
-		} catch (Exception e) {
-			System.err.println("[P2P]Error initializing async P2P: " + e.getMessage());
-			e.printStackTrace();
-			return java.util.concurrent.CompletableFuture.completedFuture(false);
-		}
-	}
-	
-	/**
-	 * 🔴 DEPRECATED - Start P2P hole punching process with target user (BLOCKING VERSION)
-	 * Use startP2PHolePunchAsync() instead to avoid ForkJoinPool exhaustion
-	 * 
-	 * @param myUsername Current user's username
-	 * @param targetUsername Target user to connect to
-	 * @return true if hole punch successful, false if should use server relay
-	 * @deprecated Use {@link #startP2PHolePunchAsync(String, String)} instead
-	 */
-	@Deprecated
-	public static boolean startP2PHolePunch(String myUsername, String targetUsername) {
-		try {
-			System.out.println("[P2P] Initiating UNIDIRECTIONAL P2P request: " + myUsername + " -> " + targetUsername);
-			
-			// Create signaling server address - use correct P2P signaling port
-			InetSocketAddress signalingServer = new InetSocketAddress(Server, UDP_Port); // P2PSignalingServer.SIGNALING_PORT
-			
-			// Use new unidirectional P2P request system
-			boolean success = NatAnalyzer.requestP2PConnection(myUsername, targetUsername, signalingServer);
-			
-			if (success) {
-				System.out.println("[P2P] Unidirectional P2P connection successful");
-				return true;
-			} else {
-				System.out.println("[P2P] Unidirectional P2P failed - will use server relay");
-				return false;
-			}
-			
-		} catch (Exception e) {
-			System.err.println("[P2P] Error during unidirectional P2P: " + e.getMessage());
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
-	/**
-	 * Legacy hole punch method for backward compatibility
-	 * @param myUsername Current user's username
-	 * @param targetUsername Target user to connect to
-	 * @return true if hole punch successful, false if should use server relay
-	 */
-	public static boolean startLegacyP2PHolePunch(String myUsername, String targetUsername) {
-		try {
-			System.out.println("[P2P] Initiating LEGACY hole punch: " + myUsername + " -> " + targetUsername);
-			
-			// Create signaling server address - use correct P2P signaling port
-			InetSocketAddress signalingServer = new InetSocketAddress(Server, UDP_Port); // P2PSignalingServer.SIGNALING_PORT
-			
-			// Perform hole punch using NatAnalyzer (old method)
-			boolean success = NatAnalyzer.performHolePunch(myUsername, targetUsername, signalingServer);
-			
-			if (success) {
-				System.out.println("[P2P] Legacy hole punch successful - P2P connection established");
-				return true;
-			} else {
-				System.out.println("[P2P] Legacy hole punch failed - will use server relay");
-				return false;
-			}
-			
-		} catch (Exception e) {
-			System.err.println("[P2P] Error during legacy hole punch: " + e.getMessage());
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
-	/**
-	 * Analyze NAT type for current network
-	 * @return NAT type: 0x00=Full Cone/Restricted, 0x11=Symmetric, 0xFE=Error
-	 */
-	public static byte analyzeNAT() {
-		try {
-			System.out.println("[P2P] Analyzing NAT type...");
-			byte natType = NatAnalyzer.analyzeSinglePort(NatAnalyzer.stunServers);
-			
-			String natTypeStr = switch (natType) {
-				case (byte)0x00 -> "Full Cone/Restricted NAT (P2P Friendly)";
-				case (byte)0x11 -> "Symmetric NAT (P2P Challenging)";
-				case (byte)0xFE -> "NAT Analysis Failed";
-				default -> "Unknown NAT Type";
-			};
-			
-			System.out.println("[P2P] NAT Type: " + natTypeStr);
-			return natType;
-			
-		} catch (Exception e) {
-			System.err.println("[P2P] NAT analysis error: " + e.getMessage());
-			return (byte)0xFE;
-		}
-	}
-	
-	/**
-	 * Get current public IP and port info
-	 * @return String array [publicIP, publicPort, natType] or null if failed
-	 */
-	public static String[] getPublicInfo() {
-		try {
-			byte natType = analyzeNAT();
-			if (natType == (byte)0xFE || NatAnalyzer.myPublicIP == null || NatAnalyzer.Public_PortList.isEmpty()) {
-				return null;
-			}
-			
-			return new String[] {
-				NatAnalyzer.myPublicIP,
-				String.valueOf(NatAnalyzer.Public_PortList.get(0)),
-				String.format("0x%02X", natType)
-			};
-			
-		} catch (Exception e) {
-			System.err.println("[P2P] Error getting public info: " + e.getMessage());
-			return null;
-		}
-	}
-	
-	/**
-	 * Send P2P message if connection is active with specific peer
-	 * @param sender Current user's username
-	 * @param receiver Target user's username  
-	 * @param message Text message to send
-	 * @return true if sent via P2P, false if should use server relay
-	 */
-	public static boolean sendP2PMessage(String sender, String receiver, String message) {
-		if (NatAnalyzer.isP2PActive(receiver)) {
-			return NatAnalyzer.sendP2PMessage(sender, receiver, message);
-		} else {
-			System.out.printf("[P2P] No active P2P connection with %s - use server relay%n", receiver);
 			return false;
 		}
 	}
