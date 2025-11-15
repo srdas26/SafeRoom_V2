@@ -38,6 +38,7 @@ public class ActiveCallDialog {
     private Label durationLabel;
     private Button muteButton;
     private Button cameraButton;
+    private Button shareScreenButton;     // Start/stop screen sharing
     private Button endCallButton;
     private Button screenToggleButton;  // Toggle between camera and screen share
     private VideoPanel localVideoPanel;   // Local camera preview
@@ -48,6 +49,7 @@ public class ActiveCallDialog {
     // State
     private boolean isMuted = false;
     private boolean isCameraOn = true;
+    private boolean isSharingScreen = false; // Currently sharing my screen
     private boolean isShowingScreen = false; // Currently showing screen vs camera
     private boolean hasRemoteScreen = false; // Remote peer is sharing screen
     private Instant callStartTime;
@@ -163,6 +165,14 @@ public class ActiveCallDialog {
         cameraButton.setVisible(videoEnabled);
         cameraButton.setManaged(videoEnabled);
         
+        // Share screen button
+        shareScreenButton = createControlButton(
+            FontAwesomeSolid.DESKTOP,
+            "#27ae60",
+            "Share Screen"
+        );
+        shareScreenButton.setOnAction(e -> handleShareScreen());
+        
         // Screen share toggle button (initially hidden)
         screenToggleButton = createControlButton(
             FontAwesomeSolid.DESKTOP,
@@ -181,7 +191,7 @@ public class ActiveCallDialog {
         );
         endCallButton.setOnAction(e -> endCall());
         
-        controlBar.getChildren().addAll(muteButton, cameraButton, screenToggleButton, endCallButton);
+        controlBar.getChildren().addAll(muteButton, cameraButton, shareScreenButton, screenToggleButton, endCallButton);
         mainContainer.setBottom(controlBar);
         
         // Create scene
@@ -314,6 +324,125 @@ public class ActiveCallDialog {
         }
         
         System.out.printf("[ActiveCallDialog] Camera %s%n", isCameraOn ? "enabled" : "disabled");
+    }
+    
+    /**
+     * Handle share screen button click
+     * Opens screen picker dialog and starts/stops screen sharing
+     */
+    private void handleShareScreen() {
+        if (isSharingScreen) {
+            // Stop screen sharing
+            stopScreenSharing();
+        } else {
+            // Start screen sharing
+            startScreenSharing();
+        }
+    }
+    
+    /**
+     * Start screen sharing
+     */
+    private void startScreenSharing() {
+        System.out.println("[ActiveCallDialog] Starting screen share...");
+        
+        try {
+            // Load screen share picker dialog
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                getClass().getResource("/view/ScreenSharePickerDialog.fxml")
+            );
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+            ScreenSharePickerDialog pickerController = loader.getController();
+            
+            // Create dialog stage
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Ekran Paylaşımı");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            pickerController.setDialogStage(dialogStage);
+            
+            // Get available sources
+            java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> screens = 
+                callManager.getWebRTCClient().getAvailableScreens();
+            java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> windows = 
+                callManager.getWebRTCClient().getAvailableWindows();
+            
+            if (screens.isEmpty() && windows.isEmpty()) {
+                System.err.println("[ActiveCallDialog] ❌ No screens or windows available");
+                return;
+            }
+            
+            pickerController.setAvailableSources(screens, windows);
+            
+            // Show dialog and wait for user selection
+            dialogStage.showAndWait();
+            
+            // Check if user confirmed
+            if (pickerController.isConfirmed()) {
+                dev.onvoid.webrtc.media.video.desktop.DesktopSource selectedSource = 
+                    pickerController.getSelectedSource();
+                boolean isWindow = pickerController.isWindowSelected();
+                
+                System.out.printf("[ActiveCallDialog] Selected source: id=%d, title=%s, isWindow=%b%n",
+                    selectedSource.id, selectedSource.title, isWindow);
+                
+                // Start screen share via CallManager
+                callManager.startScreenShare(selectedSource.id, isWindow);
+                
+                // Update UI state
+                isSharingScreen = true;
+                updateShareScreenButton();
+                
+                System.out.println("[ActiveCallDialog] ✅ Screen sharing started");
+            } else {
+                System.out.println("[ActiveCallDialog] Screen share cancelled");
+            }
+            
+        } catch (Exception e) {
+            System.err.printf("[ActiveCallDialog] ❌ Error starting screen share: %s%n", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Stop screen sharing
+     */
+    private void stopScreenSharing() {
+        System.out.println("[ActiveCallDialog] Stopping screen share...");
+        
+        if (callManager != null) {
+            callManager.stopScreenShare();
+            
+            // Update UI state
+            isSharingScreen = false;
+            updateShareScreenButton();
+            
+            System.out.println("[ActiveCallDialog] ✅ Screen sharing stopped");
+        }
+    }
+    
+    /**
+     * Update share screen button appearance
+     */
+    private void updateShareScreenButton() {
+        if (shareScreenButton == null) return;
+        
+        FontIcon icon = new FontIcon(isSharingScreen ? 
+            FontAwesomeSolid.STOP : FontAwesomeSolid.DESKTOP);
+        icon.setIconSize(24);
+        shareScreenButton.setGraphic(icon);
+        
+        String color = isSharingScreen ? "#e74c3c" : "#27ae60";
+        String tooltip = isSharingScreen ? "Stop Sharing" : "Share Screen";
+        
+        shareScreenButton.setStyle(String.format(
+            "-fx-background-color: %s; -fx-text-fill: white; " +
+            "-fx-pref-width: 60px; -fx-pref-height: 60px; " +
+            "-fx-background-radius: 30px;",
+            color
+        ));
+        
+        shareScreenButton.setTooltip(new javafx.scene.control.Tooltip(tooltip));
     }
     
     /**
