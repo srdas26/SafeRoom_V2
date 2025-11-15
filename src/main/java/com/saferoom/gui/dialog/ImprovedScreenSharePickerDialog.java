@@ -1,11 +1,10 @@
 package com.saferoom.gui.dialog;
 
 import dev.onvoid.webrtc.media.video.desktop.DesktopSource;
+import com.saferoom.webrtc.WebRTCClient;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -33,6 +32,7 @@ public class ImprovedScreenSharePickerDialog {
     private DesktopSource selectedSource;
     private boolean isWindow = false;
     private boolean confirmed = false;
+    private WebRTCClient webrtcClient; // For capturing thumbnails
     
     // Currently selected tile for visual feedback
     private SourceTile selectedTile = null;
@@ -69,6 +69,15 @@ public class ImprovedScreenSharePickerDialog {
      * Set available sources and populate grids with thumbnails
      */
     public void setAvailableSources(List<DesktopSource> screens, List<DesktopSource> windows) {
+        setAvailableSources(screens, windows, null);
+    }
+    
+    /**
+     * Set available sources with WebRTC client for thumbnail capture
+     */
+    public void setAvailableSources(List<DesktopSource> screens, List<DesktopSource> windows, WebRTCClient client) {
+        this.webrtcClient = client;
+        
         System.out.printf("[ImprovedScreenPicker] Loading sources: %d screens, %d windows%n", 
             screens.size(), windows.size());
         
@@ -91,6 +100,8 @@ public class ImprovedScreenSharePickerDialog {
         
         // Update status
         updateStatus();
+        
+        System.out.println("[ImprovedScreenPicker] ℹ️ Hover over a source to see live preview");
     }
     
     /**
@@ -233,12 +244,12 @@ public class ImprovedScreenSharePickerDialog {
     
     /**
      * Inner class representing a visual tile for a screen/window
-     * Google Meet style with thumbnail, title, and selection border
+     * Google Meet style with icon placeholder, title, and selection border
      */
     private static class SourceTile extends VBox {
         private final DesktopSource source;
         private final boolean isWindow;
-        private final Rectangle thumbnailRect;
+        private final StackPane thumbnailPane;
         private final Border selectedBorder;
         private final Border normalBorder;
         
@@ -269,18 +280,20 @@ public class ImprovedScreenSharePickerDialog {
             
             setBorder(normalBorder);
             
-            // Thumbnail (placeholder - would need actual screen capture for real preview)
-            thumbnailRect = new Rectangle(230, 130);
+            // Thumbnail placeholder with dark background
+            Rectangle thumbnailRect = new Rectangle(230, 130);
             thumbnailRect.setFill(Color.web("#1a1a1a"));
             thumbnailRect.setArcWidth(5);
             thumbnailRect.setArcHeight(5);
             
-            // Add icon overlay
+            // Icon overlay
             Label icon = new Label(isWindow ? "🪟" : "🖥️");
             icon.setStyle("-fx-font-size: 40px;");
             
-            StackPane thumbnailPane = new StackPane(thumbnailRect, icon);
+            thumbnailPane = new StackPane(thumbnailRect, icon);
             thumbnailPane.setAlignment(Pos.CENTER);
+            thumbnailPane.setPrefSize(230, 130);
+            thumbnailPane.setMaxSize(230, 130);
             
             // Title label
             String displayText;

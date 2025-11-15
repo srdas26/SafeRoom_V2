@@ -536,10 +536,11 @@ public class ActiveCallDialog {
             dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
             pickerController.setDialogStage(dialogStage);
             
-            // Set available sources (now safely obtained)
+            // Set available sources with WebRTC client for thumbnail capture
             pickerController.setAvailableSources(
                 screens != null ? screens : new java.util.ArrayList<>(),
-                windows != null ? windows : new java.util.ArrayList<>()
+                windows != null ? windows : new java.util.ArrayList<>(),
+                callManager.getWebRTCClient() // Pass client for thumbnail capture
             );
             
             // Show dialog and wait for user selection

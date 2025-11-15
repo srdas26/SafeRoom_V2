@@ -902,6 +902,29 @@ public class WebRTCClient {
         return (AudioTrack) localAudioTrack;
     }
     
+    /**
+     * Capture a thumbnail preview for a screen/window source
+     * Returns a VideoFrame with the captured image
+     * 
+     * Note: Due to native library limitations and platform compatibility issues,
+     * thumbnail capture is disabled. This method returns null and the UI will
+     * show placeholder icons instead.
+     */
+    public VideoFrame captureThumbnail(DesktopSource source, boolean isWindow) {
+        System.out.printf("[WebRTC] Thumbnail capture requested for: %s (isWindow=%b)%n", source.title, isWindow);
+        System.out.println("[WebRTC] ⚠️ Thumbnail capture is disabled due to platform limitations");
+        
+        // Thumbnail capture causes issues on some platforms (especially Linux)
+        // The native screen capture API doesn't provide a clean way to get a single frame
+        // without starting a full capture session, which can cause crashes or hangs.
+        // 
+        // For now, we'll use placeholder icons in the UI instead of real thumbnails.
+        // This is similar to how Google Meet initially shows placeholders before
+        // hovering/selecting a source.
+        
+        return null;
+    }
+    
     // ===============================
     // Mock SDP Generator (fallback)
     // ===============================

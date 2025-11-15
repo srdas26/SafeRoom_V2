@@ -495,7 +495,8 @@ public class ChatViewController {
                 return;
             }
             
-            pickerController.setAvailableSources(screens, windows);
+            // Set sources with WebRTC client for thumbnail capture
+            pickerController.setAvailableSources(screens, windows, callManager.getWebRTCClient());
             
             // Show dialog and wait for user selection
             dialogStage.showAndWait();
