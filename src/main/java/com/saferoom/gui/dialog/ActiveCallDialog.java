@@ -730,8 +730,14 @@ public class ActiveCallDialog {
             System.out.println("[ActiveCallDialog] 🖥️ Detected screen share track");
             
             if (remoteScreenPanel != null) {
+                // Detach old track first to ensure clean update
+                remoteScreenPanel.detachVideoTrack();
+                
+                // Attach new track
                 remoteScreenPanel.attachVideoTrack(track);
                 hasRemoteScreen = true;
+                
+                System.out.printf("[ActiveCallDialog] ✅ Screen share track attached: %s%n", trackId);
                 
                 // Show screen toggle button
                 if (screenToggleButton != null) {
@@ -746,7 +752,13 @@ public class ActiveCallDialog {
             System.out.println("[ActiveCallDialog] 📹 Detected camera track");
             
             if (remoteVideoPanel != null) {
+                // Detach old track first to ensure clean update
+                remoteVideoPanel.detachVideoTrack();
+                
+                // Attach new track
                 remoteVideoPanel.attachVideoTrack(track);
+                
+                System.out.printf("[ActiveCallDialog] ✅ Camera track attached: %s%n", trackId);
             }
         }
     }

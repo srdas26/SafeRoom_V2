@@ -822,8 +822,10 @@ public class WebRTCClient {
             return;
         }
         
+        boolean wasAlreadySharing = screenSharingEnabled;
+        
         if (screenSharingEnabled) {
-            System.out.println("[WebRTC] Screen sharing already active - stopping previous session");
+            System.out.println("[WebRTC] Screen sharing already active - switching to new source");
             stopScreenShare();
         }
         
@@ -840,8 +842,9 @@ public class WebRTCClient {
             screenShareSource.start();
             System.out.println("[WebRTC] Desktop capture started");
             
-            // Create video track from desktop source
-            screenShareTrack = factory.createVideoTrack("screen_share", screenShareSource);
+            // Create video track from desktop source with unique ID including source
+            String trackId = "screen_share_" + sourceId;
+            screenShareTrack = factory.createVideoTrack(trackId, screenShareSource);
             screenShareTrack.setEnabled(true);
             
             // Add track to peer connection if exists
@@ -849,14 +852,18 @@ public class WebRTCClient {
                 List<String> streamIds = new ArrayList<>();
                 streamIds.add("screen_share_stream");
                 peerConnection.addTrack(screenShareTrack, streamIds);
-                System.out.println("[WebRTC] Screen share track added to peer connection");
+                System.out.printf("[WebRTC] Screen share track added to peer connection: %s%n", trackId);
                 
-                // Renegotiate (caller should call createOffer again)
-                System.out.println("[WebRTC] ⚠️ Renegotiation required - caller should create new offer");
+                // Renegotiation required when switching sources
+                if (wasAlreadySharing) {
+                    System.out.println("[WebRTC] 🔄 Source changed - renegotiation required");
+                } else {
+                    System.out.println("[WebRTC] ⚠️ Renegotiation required - caller should create new offer");
+                }
             }
             
             screenSharingEnabled = true;
-            System.out.println("[WebRTC] Screen sharing started successfully");
+            System.out.printf("[WebRTC] Screen sharing started successfully (source: %d)%n", sourceId);
             
         } catch (Exception e) {
             System.err.printf("[WebRTC] Failed to start screen sharing: %s%n", e.getMessage());
