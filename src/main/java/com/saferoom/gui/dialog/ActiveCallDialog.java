@@ -717,7 +717,8 @@ public class ActiveCallDialog {
     
     /**
      * Attach remote video track for display
-     * Detects if it's a camera stream or screen share based on track ID
+     * With replaceTrack(), same track ID (video0) is used for camera and screen share
+     * We simply display the current video track content (camera or screen)
      */
     public void attachRemoteVideo(VideoTrack track) {
         if (track == null) return;
@@ -725,41 +726,18 @@ public class ActiveCallDialog {
         String trackId = track.getId();
         System.out.printf("[ActiveCallDialog] Attaching remote video track: %s%n", trackId);
         
-        // Detect if this is a screen share track (ID contains "screen_share")
-        if (trackId.contains("screen_share")) {
-            System.out.println("[ActiveCallDialog] 🖥️ Detected screen share track");
+        // With replaceTrack(), the track content changes but ID stays same (video0)
+        // Simply update the main video panel with the current track
+        System.out.println("[ActiveCallDialog] 📹 Updating video panel with current track");
+        
+        if (remoteVideoPanel != null) {
+            // Detach old track first to ensure clean update
+            remoteVideoPanel.detachVideoTrack();
             
-            if (remoteScreenPanel != null) {
-                // Detach old track first to ensure clean update
-                remoteScreenPanel.detachVideoTrack();
-                
-                // Attach new track
-                remoteScreenPanel.attachVideoTrack(track);
-                hasRemoteScreen = true;
-                
-                System.out.printf("[ActiveCallDialog] ✅ Screen share track attached: %s%n", trackId);
-                
-                // Show screen toggle button
-                if (screenToggleButton != null) {
-                    screenToggleButton.setVisible(true);
-                    screenToggleButton.setManaged(true);
-                }
-                
-                // Auto-switch to screen view
-                switchToScreenView();
-            }
-        } else {
-            System.out.println("[ActiveCallDialog] 📹 Detected camera track");
+            // Attach new track (will show camera or screen share depending on sender)
+            remoteVideoPanel.attachVideoTrack(track);
             
-            if (remoteVideoPanel != null) {
-                // Detach old track first to ensure clean update
-                remoteVideoPanel.detachVideoTrack();
-                
-                // Attach new track
-                remoteVideoPanel.attachVideoTrack(track);
-                
-                System.out.printf("[ActiveCallDialog] ✅ Camera track attached: %s%n", trackId);
-            }
+            System.out.printf("[ActiveCallDialog] ✅ Video track attached: %s%n", trackId);
         }
     }
     

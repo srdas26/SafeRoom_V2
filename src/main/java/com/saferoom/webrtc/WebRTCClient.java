@@ -29,6 +29,9 @@ public class WebRTCClient {
     private MediaStreamTrack localVideoTrack;
     private dev.onvoid.webrtc.media.video.VideoDeviceSource videoSource; // Keep reference to stop camera
     
+    // Track RTP senders for replaceTrack operations
+    private RTCRtpSender videoSender = null;
+    
     // Screen sharing
     private MediaStreamTrack screenShareTrack;
     private VideoDesktopSource screenShareSource;
@@ -581,8 +584,8 @@ public class WebRTCClient {
             videoSource.start();
             System.out.println("[WebRTC] Camera capture started successfully");
             
-            // Add track to peer connection with stream ID
-            peerConnection.addTrack(videoTrack, List.of("stream1"));
+            // Add track to peer connection with stream ID and store sender
+            videoSender = peerConnection.addTrack(videoTrack, List.of("stream1"));
             
             System.out.println("[WebRTC] ✅ Video track added with optimized settings:");
             System.out.println("  ├─ Resolution: 640x480 (MacOS stable)");
@@ -849,12 +852,29 @@ public class WebRTCClient {
             
             // Add track to peer connection if exists
             if (peerConnection != null) {
-                List<String> streamIds = new ArrayList<>();
-                streamIds.add("screen_share_stream");
-                peerConnection.addTrack(screenShareTrack, streamIds);
-                System.out.printf("[WebRTC] Screen share track added to peer connection: %s%n", trackId);
+                // IMPORTANT: Use replaceTrack() to replace camera with screen share
+                // This is the standard WebRTC approach for screen sharing
+                if (videoSender != null) {
+                    try {
+                        videoSender.replaceTrack(screenShareTrack);
+                        System.out.printf("[WebRTC] ✅ Camera video replaced with screen share (track: %s)%n", trackId);
+                    } catch (Exception e) {
+                        System.err.printf("[WebRTC] Failed to replace track: %s%n", e.getMessage());
+                        // Fallback: try addTrack
+                        List<String> streamIds = new ArrayList<>();
+                        streamIds.add("screen_share_stream");
+                        peerConnection.addTrack(screenShareTrack, streamIds);
+                        System.out.println("[WebRTC] ⚠️ Fallback: added screen share as new track");
+                    }
+                } else {
+                    // No existing video sender, add track normally
+                    List<String> streamIds = new ArrayList<>();
+                    streamIds.add("screen_share_stream");
+                    peerConnection.addTrack(screenShareTrack, streamIds);
+                    System.out.println("[WebRTC] ⚠️ No video sender found, added screen share as new track");
+                }
                 
-                // Renegotiation required when switching sources
+                // Renegotiation required
                 if (wasAlreadySharing) {
                     System.out.println("[WebRTC] 🔄 Source changed - renegotiation required");
                 } else {
@@ -884,19 +904,13 @@ public class WebRTCClient {
         }
         
         try {
-            // Remove track from peer connection first
-            if (peerConnection != null && screenShareTrack != null) {
+            // Restore camera video track if we used replaceTrack
+            if (videoSender != null && localVideoTrack != null) {
                 try {
-                    // Find and remove sender
-                    for (RTCRtpSender sender : peerConnection.getSenders()) {
-                        if (sender.getTrack() == screenShareTrack) {
-                            peerConnection.removeTrack(sender);
-                            System.out.println("[WebRTC] Screen share track removed from peer connection");
-                            break;
-                        }
-                    }
+                    videoSender.replaceTrack(localVideoTrack);
+                    System.out.println("[WebRTC] ✅ Restored camera video track");
                 } catch (Exception e) {
-                    System.err.println("[WebRTC] Error removing track from peer connection: " + e.getMessage());
+                    System.err.println("[WebRTC] Error restoring camera track: " + e.getMessage());
                 }
             }
             
@@ -937,7 +951,7 @@ public class WebRTCClient {
                 screenShareSource = null;
             }
             
-            System.out.println("[WebRTC] Screen sharing stopped successfully");
+            System.out.println("[WebRTC] Screen sharing stopped successfully - camera video restored");
             
         } catch (Exception e) {
             System.err.printf("[WebRTC] Error stopping screen share: %s%n", e.getMessage());

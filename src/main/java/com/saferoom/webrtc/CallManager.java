@@ -336,22 +336,21 @@ public class CallManager {
         
         System.out.println("[CallManager] Stopping screen share");
         
-        // Stop screen sharing
+        // Stop screen sharing (restores camera video)
         webrtcClient.stopScreenShare();
         
-        // Notify remote peer
-        signalingClient.sendScreenShareStop(currentCallId, remoteUsername);
-        
-        System.out.println("[CallManager] Screen share stop signal sent");
+        // Renegotiate to notify remote peer about camera restoration
+        renegotiateAfterScreenShareStop();
     }
     
     /**
-     * Renegotiate connection with screen share track
+     * Renegotiate connection with screen share track (replaced camera)
      */
     private void renegotiateWithScreenShare() {
         System.out.println("[CallManager] Renegotiating with screen share...");
+        System.out.println("[CallManager] 🖥️ Creating offer with screen share (replaced camera)");
         
-        // Create new offer with screen share track
+        // Create new offer with screen share track (camera is replaced)
         webrtcClient.createOffer()
             .thenAccept(sdp -> {
                 System.out.println("[CallManager] Sending SCREEN_SHARE_OFFER with new SDP");
@@ -363,6 +362,30 @@ public class CallManager {
             })
             .exceptionally(e -> {
                 System.err.printf("[CallManager] Failed to create screen share offer: %s%n", e.getMessage());
+                e.printStackTrace();
+                return null;
+            });
+    }
+    
+    /**
+     * Renegotiate after stopping screen share (camera restored)
+     */
+    private void renegotiateAfterScreenShareStop() {
+        System.out.println("[CallManager] Renegotiating after screen share stop...");
+        System.out.println("[CallManager] 📹 Creating offer with restored camera");
+        
+        // Create new offer with camera video restored
+        webrtcClient.createOffer()
+            .thenAccept(sdp -> {
+                System.out.println("[CallManager] Sending SCREEN_SHARE_STOP signal with renegotiation");
+                
+                // Send screen share stop signal
+                signalingClient.sendScreenShareStop(currentCallId, remoteUsername);
+                
+                System.out.println("[CallManager] Screen share stop signal sent");
+            })
+            .exceptionally(e -> {
+                System.err.printf("[CallManager] Failed to create offer after screen share stop: %s%n", e.getMessage());
                 e.printStackTrace();
                 return null;
             });

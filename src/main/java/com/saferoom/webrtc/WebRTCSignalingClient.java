@@ -12,6 +12,8 @@ import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -35,6 +37,9 @@ public class WebRTCSignalingClient {
     
     // Callbacks for incoming signals
     private Consumer<WebRTCSignal> onIncomingSignalCallback;
+    
+    // Signal handlers by type (for group calls)
+    private final Map<SignalType, Consumer<WebRTCSignal>> signalHandlers = new ConcurrentHashMap<>();
     
     /**
      * Constructor
@@ -465,19 +470,30 @@ public class WebRTCSignalingClient {
                     System.out.printf("[SignalingClient] 📨 Received signal: %s from %s (to: %s, callId: %s)%n", 
                         signal.getType(), signal.getFrom(), signal.getTo(), signal.getCallId());
                     
-                    // 🔧 DEBUG: Check if callback is set
-                    if (onIncomingSignalCallback == null) {
-                        System.err.println("[SignalingClient] ❌ WARNING: onIncomingSignalCallback is NULL!");
+                    // 1. Check signal-specific handlers (for group calls)
+                    Consumer<WebRTCSignal> handler = signalHandlers.get(signal.getType());
+                    if (handler != null) {
+                        try {
+                            handler.accept(signal);
+                            System.out.printf("[SignalingClient] ✅ Signal handled by specific handler: %s%n", signal.getType());
+                        } catch (Exception e) {
+                            System.err.printf("[SignalingClient] ❌ Error in signal handler: %s%n", e.getMessage());
+                            e.printStackTrace();
+                        }
                         return;
                     }
                     
-                    // Forward to callback
-                    try {
-                        onIncomingSignalCallback.accept(signal);
-                        System.out.printf("[SignalingClient] ✅ Signal forwarded to CallManager: %s%n", signal.getType());
-                    } catch (Exception e) {
-                        System.err.printf("[SignalingClient] ❌ Error in callback: %s%n", e.getMessage());
-                        e.printStackTrace();
+                    // 2. Fallback to general callback (for 1-1 calls)
+                    if (onIncomingSignalCallback != null) {
+                        try {
+                            onIncomingSignalCallback.accept(signal);
+                            System.out.printf("[SignalingClient] ✅ Signal forwarded to CallManager: %s%n", signal.getType());
+                        } catch (Exception e) {
+                            System.err.printf("[SignalingClient] ❌ Error in callback: %s%n", e.getMessage());
+                            e.printStackTrace();
+                        }
+                    } else {
+                        System.err.println("[SignalingClient] ⚠️ No handler for signal: " + signal.getType());
                     }
                 }
                 
@@ -570,6 +586,52 @@ public class WebRTCSignalingClient {
      */
     public void setOnIncomingSignalCallback(Consumer<WebRTCSignal> callback) {
         this.onIncomingSignalCallback = callback;
+    }
+    
+    /**
+     * Add signal handler for specific signal type (used by GroupCallManager)
+     */
+    public void addSignalHandler(SignalType type, Consumer<WebRTCSignal> handler) {
+        signalHandlers.put(type, handler);
+        System.out.printf("[SignalingClient] ✅ Handler registered for signal type: %s%n", type);
+    }
+    
+    /**
+     * Remove signal handler for specific signal type
+     */
+    public void removeSignalHandler(SignalType type) {
+        signalHandlers.remove(type);
+        System.out.printf("[SignalingClient] 🗑️ Handler removed for signal type: %s%n", type);
+    }
+    
+    /**
+     * Generic send signal method (for group calls)
+     */
+    public CompletableFuture<WebRTCResponse> sendSignal(WebRTCSignal signal) {
+        CompletableFuture<WebRTCResponse> future = new CompletableFuture<>();
+        
+        try {
+            if (streamActive && signalingStreamOut != null) {
+                System.out.printf("[SignalingClient] 📤 Sending %s via stream%n", signal.getType());
+                signalingStreamOut.onNext(signal);
+                
+                // For stream, immediately complete with success
+                WebRTCResponse response = WebRTCResponse.newBuilder()
+                    .setSuccess(true)
+                    .setMessage("Signal sent via stream")
+                    .build();
+                future.complete(response);
+            } else {
+                System.err.println("[SignalingClient] ❌ Stream not active, falling back to unary RPC");
+                WebRTCResponse response = blockingStub.sendWebRTCSignal(signal);
+                future.complete(response);
+            }
+        } catch (Exception e) {
+            System.err.printf("[SignalingClient] ❌ Error sending signal: %s%n", e.getMessage());
+            future.completeExceptionally(e);
+        }
+        
+        return future;
     }
     
     // ===============================

@@ -238,6 +238,16 @@ message WebRTCSignal {
         P2P_ANSWER = 11;        // P2P messaging DataChannel answer (NOT for calls)
         SCREEN_SHARE_OFFER = 12; // Screen sharing renegotiation offer
         SCREEN_SHARE_STOP = 13;  // Screen sharing stopped
+        
+        // GROUP CALL SIGNALS (Mesh topology for ≤4 participants)
+        ROOM_JOIN = 14;         // Join a room (sends roomId)
+        ROOM_JOINED = 15;       // Server confirms join + sends peer list
+        ROOM_PEER_JOINED = 16;  // Notify existing peers: new peer joined
+        ROOM_PEER_LEFT = 17;    // Notify: peer left room
+        ROOM_LEAVE = 18;        // Leave room
+        MESH_OFFER = 19;        // Mesh SDP offer (peer-to-peer)
+        MESH_ANSWER = 20;       // Mesh SDP answer (peer-to-peer)
+        MESH_ICE_CANDIDATE = 21;// Mesh ICE candidate (peer-to-peer)
     }
     
     SignalType type = 1;        // Sinyal tipi
@@ -257,9 +267,13 @@ message WebRTCSignal {
     bool audioEnabled = 9;      // Ses aktif mi?
     bool videoEnabled = 10;     // Video aktif mi?
     
+    // GROUP CALL fields
+    optional string roomId = 13;        // Room ID for group calls
+    repeated string peerList = 14;      // List of peer usernames in room
+    
     // Ek bilgiler
-    optional int64 timestamp = 11;
-    optional string metadata = 12;  // JSON format extra data
+    optional int64 timestamp = 15;
+    optional string metadata = 16;  // JSON format extra data
 }
 
 message WebRTCResponse {

@@ -968,6 +968,34 @@ public void sendFriendRequest(FriendRequest request, StreamObserver<FriendRespon
 						// Continue to forward this signal since it's not a registration
 					}
 					
+					// ===============================
+					// GROUP CALL SIGNAL HANDLING
+					// ===============================
+					
+					// Handle ROOM_JOIN
+					if (signal.getType() == SafeRoomProto.WebRTCSignal.SignalType.ROOM_JOIN) {
+						handleRoomJoin(signal, responseObserver);
+						return;
+					}
+					
+					// Handle ROOM_LEAVE
+					if (signal.getType() == SafeRoomProto.WebRTCSignal.SignalType.ROOM_LEAVE) {
+						handleRoomLeave(signal, responseObserver);
+						return;
+					}
+					
+					// Handle MESH signals (MESH_OFFER, MESH_ANSWER, MESH_ICE_CANDIDATE)
+					if (signal.getType() == SafeRoomProto.WebRTCSignal.SignalType.MESH_OFFER ||
+						signal.getType() == SafeRoomProto.WebRTCSignal.SignalType.MESH_ANSWER ||
+						signal.getType() == SafeRoomProto.WebRTCSignal.SignalType.MESH_ICE_CANDIDATE) {
+						handleMeshSignal(signal);
+						return;
+					}
+					
+					// ===============================
+					// 1-1 CALL SIGNAL FORWARDING
+					// ===============================
+					
 					// Forward signal to target user
 					String target = signal.getTo();
 					if (target == null || target.isEmpty()) {
@@ -1003,6 +1031,32 @@ public void sendFriendRequest(FriendRequest request, StreamObserver<FriendRespon
 				System.err.printf("[WebRTC-Stream] Stream error for %s: %s%n", username, t.getMessage());
 				if (username != null) {
 					WebRTCSessionManager.unregisterSignalingStream(username);
+					
+					// Remove user from room if in one
+					if (WebRTCSessionManager.isUserInRoom(username)) {
+						String roomId = WebRTCSessionManager.getUserRoomId(username);
+						System.out.printf("[WebRTC-Stream] Cleaning up room %s for disconnected user %s%n", 
+							roomId, username);
+						
+						// Notify others before removing
+						WebRTCSessionManager.RoomSession room = WebRTCSessionManager.getRoom(roomId);
+						if (room != null) {
+							SafeRoomProto.WebRTCSignal peerLeftSignal = SafeRoomProto.WebRTCSignal.newBuilder()
+								.setType(SafeRoomProto.WebRTCSignal.SignalType.ROOM_PEER_LEFT)
+								.setFrom(username)
+								.setRoomId(roomId)
+								.setTimestamp(System.currentTimeMillis())
+								.build();
+							
+							for (String participant : room.getParticipantList()) {
+								if (!participant.equals(username)) {
+									WebRTCSessionManager.sendSignalToUser(participant, peerLeftSignal);
+								}
+							}
+						}
+						
+						WebRTCSessionManager.leaveRoom(username);
+					}
 				}
 			}
 			
@@ -1011,6 +1065,32 @@ public void sendFriendRequest(FriendRequest request, StreamObserver<FriendRespon
 				System.out.printf("[WebRTC-Stream] User disconnected: %s%n", username);
 				if (username != null) {
 					WebRTCSessionManager.unregisterSignalingStream(username);
+					
+					// Remove user from room if in one
+					if (WebRTCSessionManager.isUserInRoom(username)) {
+						String roomId = WebRTCSessionManager.getUserRoomId(username);
+						System.out.printf("[WebRTC-Stream] Cleaning up room %s for disconnected user %s%n", 
+							roomId, username);
+						
+						// Notify others before removing
+						WebRTCSessionManager.RoomSession room = WebRTCSessionManager.getRoom(roomId);
+						if (room != null) {
+							SafeRoomProto.WebRTCSignal peerLeftSignal = SafeRoomProto.WebRTCSignal.newBuilder()
+								.setType(SafeRoomProto.WebRTCSignal.SignalType.ROOM_PEER_LEFT)
+								.setFrom(username)
+								.setRoomId(roomId)
+								.setTimestamp(System.currentTimeMillis())
+								.build();
+							
+							for (String participant : room.getParticipantList()) {
+								if (!participant.equals(username)) {
+									WebRTCSessionManager.sendSignalToUser(participant, peerLeftSignal);
+								}
+							}
+						}
+						
+						WebRTCSessionManager.leaveRoom(username);
+					}
 				}
 				responseObserver.onCompleted();
 			}
@@ -1117,6 +1197,127 @@ public void sendFriendRequest(FriendRequest request, StreamObserver<FriendRespon
 			.setMessage("Call ended")
 			.build());
 		responseObserver.onCompleted();
+	}
+	
+	// ===============================
+	// GROUP CALL (ROOM) HANDLERS
+	// ===============================
+	
+	/**
+	 * Handle ROOM_JOIN signal
+	 * Server creates/joins room and sends back ROOM_JOINED with peer list
+	 */
+	private void handleRoomJoin(SafeRoomProto.WebRTCSignal signal, 
+			StreamObserver<SafeRoomProto.WebRTCSignal> responseObserver) {
+		
+		String username = signal.getFrom();
+		String roomId = signal.getRoomId();
+		boolean audio = signal.getAudioEnabled();
+		boolean video = signal.getVideoEnabled();
+		
+		System.out.printf("[WebRTC-Room] User %s joining room %s (audio=%b, video=%b)%n", 
+			username, roomId, audio, video);
+		
+		// Get current participants before joining (for broadcasting)
+		WebRTCSessionManager.RoomSession room = WebRTCSessionManager.getRoom(roomId);
+		List<String> existingParticipants = room != null ? room.getParticipantList() : new java.util.ArrayList<>();
+		
+		// Join room
+		room = WebRTCSessionManager.joinRoom(roomId, username, audio, video);
+		
+		// Send ROOM_JOINED confirmation with peer list to the new participant
+		SafeRoomProto.WebRTCSignal joinedSignal = SafeRoomProto.WebRTCSignal.newBuilder()
+			.setType(SafeRoomProto.WebRTCSignal.SignalType.ROOM_JOINED)
+			.setFrom("server")
+			.setTo(username)
+			.setRoomId(roomId)
+			.addAllPeerList(existingParticipants) // Existing participants (not including self)
+			.setTimestamp(System.currentTimeMillis())
+			.build();
+		
+		responseObserver.onNext(joinedSignal);
+		System.out.printf("[WebRTC-Room] Sent ROOM_JOINED to %s with %d peers%n", 
+			username, existingParticipants.size());
+		
+		// Broadcast ROOM_PEER_JOINED to existing participants
+		SafeRoomProto.WebRTCSignal peerJoinedSignal = SafeRoomProto.WebRTCSignal.newBuilder()
+			.setType(SafeRoomProto.WebRTCSignal.SignalType.ROOM_PEER_JOINED)
+			.setFrom(username)
+			.setRoomId(roomId)
+			.setAudioEnabled(audio)
+			.setVideoEnabled(video)
+			.setTimestamp(System.currentTimeMillis())
+			.build();
+		
+		for (String participant : existingParticipants) {
+			WebRTCSessionManager.sendSignalToUser(participant, peerJoinedSignal);
+		}
+		
+		System.out.printf("[WebRTC-Room] Broadcast ROOM_PEER_JOINED to %d participants%n", 
+			existingParticipants.size());
+	}
+	
+	/**
+	 * Handle ROOM_LEAVE signal
+	 * Remove user from room and notify others
+	 */
+	private void handleRoomLeave(SafeRoomProto.WebRTCSignal signal, 
+			StreamObserver<SafeRoomProto.WebRTCSignal> responseObserver) {
+		
+		String username = signal.getFrom();
+		String roomId = WebRTCSessionManager.getUserRoomId(username);
+		
+		if (roomId == null) {
+			System.err.printf("[WebRTC-Room] User %s not in any room%n", username);
+			return;
+		}
+		
+		System.out.printf("[WebRTC-Room] User %s leaving room %s%n", username, roomId);
+		
+		// Get participants before leaving (for broadcasting)
+		WebRTCSessionManager.RoomSession room = WebRTCSessionManager.getRoom(roomId);
+		List<String> remainingParticipants = room != null ? room.getParticipantList() : new java.util.ArrayList<>();
+		
+		// Remove from room
+		WebRTCSessionManager.leaveRoom(username);
+		
+		// Broadcast ROOM_PEER_LEFT to remaining participants
+		SafeRoomProto.WebRTCSignal peerLeftSignal = SafeRoomProto.WebRTCSignal.newBuilder()
+			.setType(SafeRoomProto.WebRTCSignal.SignalType.ROOM_PEER_LEFT)
+			.setFrom(username)
+			.setRoomId(roomId)
+			.setTimestamp(System.currentTimeMillis())
+			.build();
+		
+		for (String participant : remainingParticipants) {
+			if (!participant.equals(username)) {
+				WebRTCSessionManager.sendSignalToUser(participant, peerLeftSignal);
+			}
+		}
+		
+		System.out.printf("[WebRTC-Room] Broadcast ROOM_PEER_LEFT to %d participants%n", 
+			remainingParticipants.size() - 1);
+	}
+	
+	/**
+	 * Handle MESH signals (MESH_OFFER, MESH_ANSWER, MESH_ICE_CANDIDATE)
+	 * Simply forward peer-to-peer signaling
+	 */
+	private void handleMeshSignal(SafeRoomProto.WebRTCSignal signal) {
+		String from = signal.getFrom();
+		String to = signal.getTo();
+		
+		if (to == null || to.isEmpty()) {
+			System.err.printf("[WebRTC-Mesh] Empty target from %s for %s%n", from, signal.getType());
+			return;
+		}
+		
+		System.out.printf("[WebRTC-Mesh] Forwarding %s: %s -> %s%n", signal.getType(), from, to);
+		
+		boolean sent = WebRTCSessionManager.sendSignalToUser(to, signal);
+		if (!sent) {
+			System.err.printf("[WebRTC-Mesh] Failed to forward %s to %s%n", signal.getType(), to);
+		}
 	}
 	
 	private void handleCallEnd(SafeRoomProto.WebRTCSignal request, 
