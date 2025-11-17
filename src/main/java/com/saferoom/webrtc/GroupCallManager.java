@@ -508,7 +508,14 @@ public class GroupCallManager {
     public void toggleVideo(boolean enabled) {
         this.videoEnabled = enabled;
         
-        // Toggle video for all peer connections
+        // CRITICAL: Toggle local video track itself (for self-preview)
+        if (localVideoTrack != null) {
+            localVideoTrack.setEnabled(enabled);
+            System.out.printf("[GroupCallManager] Local video track %s%n", 
+                enabled ? "enabled" : "disabled");
+        }
+        
+        // Toggle video for all peer connections (for remote peers)
         for (WebRTCClient client : peerConnections.values()) {
             client.toggleVideo(enabled);
         }
@@ -563,10 +570,13 @@ public class GroupCallManager {
             // Create video track
             localVideoTrack = factory.createVideoTrack("local_video", localVideoSource);
             
+            // CRITICAL: Enable video track (tracks are disabled by default)
+            localVideoTrack.setEnabled(true);
+            
             // Start capturing
             localVideoSource.start();
             
-            System.out.println("[GroupCallManager] ✅ Local video track created and started");
+            System.out.println("[GroupCallManager] ✅ Local video track created, enabled, and started");
             
         } catch (Exception e) {
             System.err.printf("[GroupCallManager] Failed to create local video track: %s%n", e.getMessage());

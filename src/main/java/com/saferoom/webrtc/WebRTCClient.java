@@ -683,10 +683,16 @@ public class WebRTCClient {
     
     public void toggleVideo(boolean enabled) {
         this.videoEnabled = enabled;
-        if (localVideoTrack != null) {
+        
+        // IMPORTANT: Don't toggle localVideoTrack if it's shared (videoSource == null)
+        // Shared tracks are managed by GroupCallManager
+        if (localVideoTrack != null && videoSource != null) {
             localVideoTrack.setEnabled(enabled);
+            System.out.printf("[WebRTC] Local video track %s (own source)%n", 
+                enabled ? "enabled" : "disabled");
+        } else if (localVideoTrack != null && videoSource == null) {
+            System.out.printf("[WebRTC] Skipping toggle - video track is shared (managed by GroupCallManager)%n");
         }
-        System.out.printf("[WebRTC] Video %s%n", enabled ? "enabled" : "disabled");
     }
     
     // ===============================
