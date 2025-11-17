@@ -115,6 +115,8 @@ public class MeetingPanelController {
             HBox nameTag = new HBox(6);
             nameTag.setAlignment(Pos.CENTER_LEFT);
             nameTag.getStyleClass().add("video-tile-nametag");
+            nameTag.setMaxWidth(HBox.USE_PREF_SIZE);  // Don't expand!
+            nameTag.setMaxHeight(HBox.USE_PREF_SIZE);  // Don't expand!
             
             micIcon = new FontIcon("fas-microphone");
             micIcon.getStyleClass().add("video-tile-mic-icon");
