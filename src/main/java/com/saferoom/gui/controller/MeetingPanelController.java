@@ -73,6 +73,7 @@ public class MeetingPanelController {
     private MeetingRoleStrategy roleStrategy;
     private boolean isPanelOpen = false;
     private final Duration animationDuration = Duration.millis(350);
+    private static final double DEFAULT_RIGHT_PANEL_WIDTH = 320.0;
     private final DoubleProperty contentRightAnchorProperty = new SimpleDoubleProperty(0.0);
     
     // ===============================
@@ -92,11 +93,12 @@ public class MeetingPanelController {
         windowStateManager.setupBasicWindowDrag(centerContentAnchorPane);
         
         contentRightAnchorProperty.addListener((obs, oldValue, newValue) -> {
+            double panelWidth = getRightPanelWidth();
             AnchorPane.setRightAnchor(contentStackPane, newValue.doubleValue());
-            AnchorPane.setRightAnchor(rightPanelVBox, newValue.doubleValue() - rightPanelVBox.getPrefWidth());
+            AnchorPane.setRightAnchor(rightPanelVBox, newValue.doubleValue() - panelWidth);
         });
         AnchorPane.setRightAnchor(contentStackPane, 0.0);
-        AnchorPane.setRightAnchor(rightPanelVBox, -rightPanelVBox.getPrefWidth());
+        AnchorPane.setRightAnchor(rightPanelVBox, -getRightPanelWidth());
         rightPanelVBox.setVisible(false);
         rightPanelVBox.setManaged(false);
         
@@ -504,7 +506,8 @@ public class MeetingPanelController {
         }
 
         Timeline timeline = new Timeline();
-        double targetAnchorValue = closing ? 0.0 : rightPanelVBox.getPrefWidth();
+        double panelWidth = getRightPanelWidth();
+        double targetAnchorValue = closing ? 0.0 : panelWidth;
         KeyValue keyValue = new KeyValue(contentRightAnchorProperty, targetAnchorValue);
         KeyFrame keyFrame = new KeyFrame(animationDuration, keyValue);
         timeline.getKeyFrames().add(keyFrame);
@@ -777,6 +780,17 @@ public class MeetingPanelController {
                 ((Pane) parent).getChildren().remove(panel);
             }
         }
+    }
+
+    private double getRightPanelWidth() {
+        double width = rightPanelVBox.getWidth();
+        if (width <= 0) {
+            width = rightPanelVBox.getPrefWidth();
+        }
+        if (width <= 0) {
+            width = DEFAULT_RIGHT_PANEL_WIDTH;
+        }
+        return width;
     }
 
     private boolean attachTrackIfPanelReady(String participantName, VideoTrack track) {
