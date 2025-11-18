@@ -5,6 +5,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
@@ -21,29 +22,41 @@
                 <Insets left="20.0" right="20.0" />
             </padding>
             <children>
-                <Label fx:id="chatPartnerAvatar" styleClass="contact-avatar" />
-                <VBox alignment="CENTER_LEFT">
+                <Label fx:id="chatPartnerAvatar" styleClass="chat-header-avatar" text="A"/>
+
+                <VBox alignment="CENTER_LEFT" spacing="2.0">
                     <children>
-                        <Label fx:id="chatPartnerName" styleClass="chat-partner-name" text="User" />
-                        <Label fx:id="chatPartnerStatus" styleClass="status-label" text="Offline" />
+                        <Label fx:id="chatPartnerName" styleClass="chat-header-name" text="Username" />
+                        <Label fx:id="chatPartnerStatus" styleClass="chat-header-status" text="Offline" />
                     </children>
                 </VBox>
+
                 <Pane HBox.hgrow="ALWAYS" />
-                <Button fx:id="phoneButton" mnemonicParsing="false" styleClass="icon-button">
-                    <graphic>
-                        <FontIcon iconLiteral="fas-phone" styleClass="header-icon" />
-                    </graphic>
-                </Button>
-                <Button fx:id="videoButton" mnemonicParsing="false" styleClass="icon-button">
-                    <graphic>
-                        <FontIcon iconLiteral="fas-video" styleClass="header-icon" />
-                    </graphic>
-                </Button>
-                <Button fx:id="screenShareButton" mnemonicParsing="false" styleClass="icon-button">
-                    <graphic>
-                        <FontIcon iconLiteral="fas-desktop" styleClass="header-icon" />
-                    </graphic>
-                </Button>
+
+                <HBox alignment="CENTER_RIGHT" spacing="5.0">
+                    <children>
+                        <Button fx:id="phoneButton" mnemonicParsing="false" styleClass="header-icon-button">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-phone" iconSize="18" iconColor="#94a1b2" />
+                            </graphic>
+                            <tooltip><Tooltip text="Audio Call"/></tooltip>
+                        </Button>
+
+                        <Button fx:id="videoButton" mnemonicParsing="false" styleClass="header-icon-button">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-video" iconSize="18" iconColor="#94a1b2" />
+                            </graphic>
+                            <tooltip><Tooltip text="Video Call"/></tooltip>
+                        </Button>
+
+                        <Button fx:id="screenShareButton" mnemonicParsing="false" styleClass="header-icon-button">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-desktop" iconSize="18" iconColor="#94a1b2" />
+                            </graphic>
+                            <tooltip><Tooltip text="Screen Share"/></tooltip>
+                        </Button>
+                    </children>
+                </HBox>
             </children>
         </HBox>
     </top>
@@ -59,7 +72,6 @@
                         <StackPane>
                             <children>
                                 <javafx.scene.shape.Circle radius="50.0" styleClass="chat-empty-glow-simple" />
-
                                 <FontIcon iconLiteral="fas-comment-alt" styleClass="chat-empty-icon-sharp" />
                             </children>
                             <VBox.margin>
