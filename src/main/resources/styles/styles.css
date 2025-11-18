@@ -481,87 +481,163 @@
    ================================================================= */
 .messages-container {
   -fx-background-color: transparent;
-  -fx-padding: 0;
-  -fx-border-width: 0;
-  -fx-background-radius: 0;
 }
-.contact-list-pane {
-  -fx-background-color: #161f31;
-  -fx-min-width: 320px;
-  -fx-max-width: 320px;
-  -fx-border-color: transparent #334155 transparent transparent;
-}
+
+/* 2. Ayırıcı Çizgi (Divider) - O beyaz çizgiyi yok ediyoruz */
 .messages-container > .split-pane-divider {
-  -fx-background-color: #334155;
-  -fx-padding: 0 1px;
+  /* Rengi uygulamanın ana arka plan rengi (#0f172a) yapıyoruz */
+  /* Böylece arada beyaz bir çizgi değil, sadece boşluk varmış gibi durur */
+  -fx-background-color: #0f172a;
+
+  /* Çizginin kalınlığı (Sürükleme alanı) */
+  -fx-padding: 0 0px; /* 2px genişliğinde bir boşluk */
+
+  /* Varsayılan kenarlıkları kaldır */
+  -fx-border-color: transparent;
+  -fx-border-width: 0;
 }
-.search-box-container {
-  -fx-padding: 16px;
-  -fx-border-color: transparent transparent #334155 transparent;
+
+/* 3. Tutamaç (Grabber) - Ortadaki noktaları gizle */
+.messages-container > .split-pane-divider > .horizontal-grabber {
+  -fx-background-color: transparent; /* Görünmez yap */
+  -fx-padding: 0;
+  -fx-shape: " "; /* Şekli tamamen kaldır */
 }
+
+/* 4. (Opsiyonel) Mouse üzerine gelince hafif renk değişimi */
+/* Kullanıcı oranın sürüklenebilir olduğunu anlasın diye */
+.messages-container > .split-pane-divider:hover {
+  -fx-background-color: #1e293b; /* Çok hafif aydınlat */
+  -fx-cursor: h-resize; /* Mouse imlecini değiştir */
+}
+
+/* Sol Panel Arka Planı */
+.contact-list-pane {
+  -fx-background-color: #0f172a; /* Ana koyu renk */
+  -fx-border-color: transparent #334155 transparent transparent; /* Sağda ince çizgi */
+  -fx-border-width: 0 1 0 0;
+}
+
+/* Liste Genel Ayarları */
 .contact-list-view {
   -fx-background-color: transparent;
-  -fx-padding: 0 8px;
+  -fx-padding: 10px; /* Kenarlardan boşluk */
 }
+
+/* --- HÜCRE (KİŞİ) GENEL YAPISI --- */
 .contact-list-view .list-cell {
   -fx-background-color: transparent;
-  -fx-padding: 12px;
-}
-.contact-list-view .list-cell:filled {
+  -fx-padding: 10px 12px; /* İçerik ile kenar arasındaki mesafe */
+
+  /* ÖNEMLİ: Kart görünümü ve Kenar Boşluğu */
+  /* Üst:0, Sağ:8px, Alt:8px, Sol:8px -> Böylece sağa sola yapışmaz */
+  -fx-background-insets: 0 8px 8px 8px;
   -fx-background-radius: 12px;
-  -fx-cursor: hand;
-  -fx-border-width: 0 0 0 4px;
+
+  /* Kenarlık ayarları */
+  -fx-border-radius: 12px;
+  -fx-border-width: 1px;
   -fx-border-color: transparent;
+  -fx-border-insets: 0 8px 8px 8px; /* Border da inset ile aynı olmalı */
+
+  -fx-cursor: hand;
 }
+
+/* --- HOVER (ÜZERİNE GELİNCE) --- */
 .contact-list-view .list-cell:filled:hover {
-  -fx-background-color: #1e2b3b;
+  -fx-background-color: rgba(255, 255, 255, 0.04);
+  -fx-border-color: rgba(255, 255, 255, 0.08);
 }
+
+/* --- SELECTED (SEÇİLİ DURUM) --- */
 .contact-list-view .list-cell:filled:selected {
-  -fx-background-color: #1e2b3b;
-  -fx-border-color: #2563eb;
+  /* Hafif gradyanlı seçim rengi */
+  -fx-background-color: linear-gradient(to right, rgba(127, 90, 240, 0.20), rgba(44, 182, 125, 0.05));
+  -fx-border-color: rgba(127, 90, 240, 0.4); /* Çerçeve rengi */
+
+  /* Neon Parlama */
+  -fx-effect: dropshadow(three-pass-box, rgba(127, 90, 240, 0.15), 15, 0, 0, 0);
 }
+
+/* --- METİN DARALMA (3 NOKTA) AYARLARI --- */
+/* İsim ve Mesajın daralınca ... olması için */
+
+.contact-name {
+  -fx-font-size: 15px;
+  -fx-font-weight: bold;
+  -fx-text-fill: #e2e8f0;
+
+  /* Bu ayarlar daralmayı sağlar */
+  -fx-min-width: 0;
+  -fx-pref-width: 100px; /* Varsayılan bir değer */
+  -fx-max-width: Infinity;
+}
+
+.contact-last-message {
+  -fx-font-size: 13px;
+  -fx-text-fill: #94a3b8;
+
+  /* Bu ayarlar daralmayı sağlar */
+  -fx-min-width: 0;
+  -fx-pref-width: 100px;
+  -fx-max-width: Infinity;
+}
+
+/* Seçili hücrede yazı renkleri */
+.contact-list-view .list-cell:filled:selected .contact-name {
+  -fx-text-fill: white;
+}
+.contact-list-view .list-cell:filled:selected .contact-last-message {
+  -fx-text-fill: #cbd5e1;
+}
+/* --- AVATAR TASARIMI (GRADYANKLI) --- */
 .contact-avatar {
-  -fx-background-color: #2563eb;
+  /* Logodaki Mor'dan Yeşile geçiş */
+  -fx-background-color: linear-gradient(to bottom right, #7F5AF0, #2CB67D);
+
   -fx-background-radius: 50%;
   -fx-pref-width: 48px;
   -fx-pref-height: 48px;
+
+  /* İçindeki harf */
   -fx-text-fill: white;
   -fx-font-size: 18px;
-  -fx-font-weight: bold;
+  -fx-font-weight: 800; /* Extra Bold */
   -fx-alignment: center;
+
+  /* Avatarın kendisine hafif gölge */
+  -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);
 }
+
+/* --- DİĞER METİN STİLLERİ --- */
 .contact-name {
+  -fx-font-size: 15px;
   -fx-font-weight: bold;
-  -fx-text-fill: white;
+  -fx-text-fill: #e2e8f0; /* Hafif kırık beyaz */
 }
-.contact-status {
-  -fx-font-size: 12px;
-  -fx-font-weight: 500;
-  -fx-background-color: transparent;
-  -fx-padding: 0px;
-  -fx-background-radius: 0px;
-  -fx-border-width: 0px;
-}
+
 .contact-last-message {
-  -fx-text-fill: #94a3b8;
+  -fx-font-size: 13px;
+  -fx-text-fill: #94a3b8; /* Slate gri */
 }
+
 .contact-time {
-  -fx-font-size: 10px;
-  -fx-text-fill: #64748b;
+  -fx-font-size: 11px;
+  -fx-text-fill: #64748b; /* Koyu gri */
 }
+
+/* Okunmamış Mesaj Rozeti */
 .unread-badge {
-  -fx-background-color: #2563eb;
-  -fx-background-radius: 20px;
+  -fx-background-color: #ef4444; /* Dikkat çekici kırmızı/pembe */
+  -fx-background-radius: 10px;
   -fx-text-fill: white;
   -fx-font-size: 10px;
   -fx-font-weight: bold;
   -fx-padding: 2px 6px;
+  -fx-min-width: 18px;
+  -fx-alignment: center;
 }
-.chat-header {
-  -fx-padding: 22px 24px;
-  -fx-border-color: transparent transparent #334155 transparent;
-  -fx-spacing: 10px;
-}
+
 .chat-partner-name {
   -fx-font-size: 18px;
   -fx-font-weight: bold;
@@ -626,6 +702,177 @@
   -fx-background-color: #2d263d; /* Tıklayınca koyulaşma */
   -fx-effect: none; /* Gölgeyi kaldır */
 }
+
+/* =================================================================
+   USER INFO SIDEBAR (SAĞ PANEL - OVERLAY STİLİ)
+   ================================================================= */
+
+/* Panelin Ana Kutusu */
+.user-info-sidebar {
+  -fx-background-color: #0f172a; /* Uygulamanın ana arka plan rengi */
+
+  /* SOL TARAFA GÖLGE (Chat'ten ayrıştırmak için kritik) */
+  /* Bu gölge panelin chat'in 'üstünde' durduğu hissini verir */
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 25, 0.2, -5, 0);
+
+  /* Sola ince bir sınır çizgisi */
+  -fx-border-color: transparent transparent transparent #334155;
+  -fx-border-width: 0 0 0 1px;
+}
+
+/* Panelin Başlığı (Header) */
+.info-sidebar-header {
+  -fx-padding: 0 20px; /* İç boşluk */
+  -fx-pref-height: 80px; /* Ana Chat Header ile aynı yükseklik (Hizalama için) */
+  -fx-min-height: 80px;
+  -fx-border-color: transparent transparent #334155 transparent; /* Alt çizgi */
+  -fx-border-width: 0 0 1px 0;
+  -fx-alignment: center-left;
+}
+
+.info-sidebar-title {
+  -fx-text-fill: #e2e8f0;
+  -fx-font-size: 16px;
+  -fx-font-weight: 700;
+  -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* İçerik Kaydırma Alanı */
+.info-scroll-pane {
+  -fx-background-color: transparent;
+  -fx-background: transparent;
+  -fx-padding: 0;
+}
+.info-scroll-pane .viewport {
+  -fx-background-color: transparent;
+}
+
+/* İçerik Kutusu */
+.info-content {
+  -fx-padding: 30px 20px;
+  -fx-background-color: transparent;
+  -fx-spacing: 25px; /* Elemanlar arası boşluk */
+}
+
+/* --- PROFİL DETAYLARI --- */
+
+/* Büyük Avatar */
+.info-avatar-large {
+  /* Logo renkleri (Mor-Yeşil) */
+  -fx-background-color: linear-gradient(to bottom right, #7F5AF0, #2CB67D);
+  -fx-background-radius: 50%;
+
+  /* Boyutlar */
+  -fx-min-width: 100px;
+  -fx-min-height: 100px;
+  -fx-pref-width: 100px;
+  -fx-pref-height: 100px;
+
+  -fx-text-fill: white;
+  -fx-font-size: 36px;
+  -fx-font-weight: 800;
+  -fx-alignment: center;
+
+  /* Hafif parlama */
+  -fx-effect: dropshadow(gaussian, rgba(127, 90, 240, 0.4), 20, 0, 0, 5);
+}
+
+.info-name {
+  -fx-text-fill: white;
+  -fx-font-size: 22px;
+  -fx-font-weight: 700;
+  -fx-font-family: "Segoe UI", sans-serif;
+}
+
+.info-status {
+  -fx-text-fill: #94a3b8; /* Slate Gri */
+  -fx-font-size: 14px;
+  -fx-font-weight: 500;
+}
+
+/* --- YUVARLAK AKSİYON BUTONLARI (Ses, Video, Ara) --- */
+.action-item {
+  -fx-cursor: hand;
+}
+
+.action-circle-btn {
+  -fx-background-color: #1e293b; /* Koyu gri zemin */
+  -fx-background-radius: 50%;
+  -fx-min-width: 48px;
+  -fx-min-height: 48px;
+  -fx-max-width: 48px;
+  -fx-max-height: 48px;
+
+  -fx-border-color: #334155;
+  -fx-border-radius: 50%;
+  -fx-cursor: hand;
+  -fx-alignment: center;
+  -fx-padding: 0;
+}
+
+.action-circle-btn:hover {
+  -fx-background-color: #334155;
+  -fx-border-color: #7F5AF0; /* Üzerine gelince mor çerçeve */
+  -fx-effect: dropshadow(gaussian, rgba(127, 90, 240, 0.4), 10, 0, 0, 0);
+}
+
+.action-label {
+  -fx-text-fill: #94a3b8;
+  -fx-font-size: 12px;
+  -fx-font-weight: 600;
+}
+
+/* Ayırıcı Çizgi */
+.separator-line {
+  -fx-background-color: #334155;
+  -fx-min-height: 1px;
+  -fx-pref-height: 1px;
+  -fx-max-height: 1px;
+  -fx-opacity: 0.5;
+}
+
+/* Bölüm Başlıkları */
+.section-header-label {
+  -fx-text-fill: #94a3b8;
+  -fx-font-size: 13px;
+  -fx-font-weight: 700;
+  -fx-padding: 0 0 5px 0;
+}
+
+/* Medya Yer Tutucuları */
+.media-placeholder {
+  -fx-background-color: #1e293b;
+  -fx-background-radius: 12px;
+  -fx-pref-width: 80px;
+  -fx-pref-height: 80px;
+  -fx-border-color: #334155;
+  -fx-border-radius: 12px;
+  -fx-cursor: hand;
+}
+.media-placeholder:hover {
+  -fx-border-color: #7F5AF0;
+}
+
+/* Tehlikeli Butonlar (Engelle / Sil) */
+.danger-text-btn {
+  -fx-background-color: transparent;
+  -fx-text-fill: #ef4444; /* Kırmızı */
+  -fx-font-size: 14px;
+  -fx-font-weight: 600;
+  -fx-alignment: center-left;
+  -fx-cursor: hand;
+  -fx-padding: 12px 15px;
+  -fx-background-radius: 8px;
+}
+
+.danger-text-btn:hover {
+  -fx-background-color: rgba(239, 68, 68, 0.1); /* Hafif kırmızı zemin */
+}
+
+
+
+
+
 
 
 
@@ -2788,6 +3035,73 @@
 .activity-icon {
   -fx-fill: #10b981;
   -fx-icon-size: 12;
+}
+
+/* 1. Avatar (Orantılı ve Dengeli - 52px) */
+
+.chat-header {
+
+
+  -fx-border-color: transparent transparent #334155 transparent;
+  -fx-border-width: 0 0 1 0;
+}
+
+.chat-header-avatar {
+  -fx-background-color: #3E3454; /* Temaya uygun mat mor */
+  -fx-background-radius: 50%;     /* Tam Daire */
+
+  /* 80px Header için ALTIN ORAN: 52px */
+  -fx-min-width: 52px;
+  -fx-min-height: 52px;
+  -fx-pref-width: 52px;
+  -fx-pref-height: 52px;
+  -fx-max-width: 52px;
+  -fx-max-height: 52px;
+
+  -fx-text-fill: white;
+  -fx-font-size: 20px; /* Harf boyutu */
+  -fx-font-weight: 700; /* Bold */
+  -fx-alignment: CENTER;
+
+  /* Hafif Gölge (Derinlik katar, yapışık durmaz) */
+  -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 8, 0, 0, 1);
+}
+
+/* 2. İsim Metni (Daha okunaklı ve büyük) */
+.chat-header-name {
+  -fx-text-fill: #ffffff;
+  -fx-font-size: 17px;
+  -fx-font-weight: 700;
+  -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* 3. Durum Metni (Hafif ve şık) */
+.chat-header-status {
+  -fx-text-fill: #94a1b2; /* Göz yormayan gri */
+  -fx-font-size: 13px;
+  -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* 4. Sağdaki Butonlar (Hover Efektli) */
+.header-icon-button {
+  -fx-background-color: transparent;
+  -fx-cursor: hand;
+  -fx-padding: 8px;
+}
+
+.header-icon-button:hover {
+  -fx-background-color: rgba(255, 255, 255, 0.1);
+  -fx-background-radius: 50%;
+}
+
+/* İkonların rengini sabitlemek istersen */
+.header-icon-button .ikonli-font-icon {
+  -fx-icon-color: #94a1b2;
+  -fx-icon-size: 18px;
+}
+
+.header-icon-button:hover .ikonli-font-icon {
+  -fx-icon-color: white;
 }
 
 /* =================================================================

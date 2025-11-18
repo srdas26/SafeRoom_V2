@@ -20,7 +20,7 @@
                    AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
             <items>
 
-                <BorderPane fx:id="contactListPane" minWidth="280.0" maxWidth="450.0" styleClass="contact-list-pane">
+                <BorderPane fx:id="contactListPane" minWidth="325.0" maxWidth="500.0" styleClass="contact-list-pane">
                     <top>
                         <VBox alignment="CENTER" prefHeight="80.0" minHeight="80.0" styleClass="search-box-container">
                             <padding>
