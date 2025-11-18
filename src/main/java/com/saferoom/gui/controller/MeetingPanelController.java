@@ -178,10 +178,6 @@ public class MeetingPanelController {
         gridViewButton.setOnAction(e -> showGridView());
         speakerViewButton.setOnAction(e -> showSpeakerView());
         
-        // TODO: Disable speaker view until implemented
-        speakerViewButton.setDisable(true);
-        speakerViewButton.setOpacity(0.5);
-        
         participantsToggle.setOnAction(e -> showParticipantsView());
         chatToggle.setOnAction(e -> showChatView());
     }
@@ -334,7 +330,13 @@ public class MeetingPanelController {
                 }
                 
                 updateParticipantsList();
-                refreshGridLayout();
+                
+                // Update active view (grid or speaker)
+                if (videoGrid.isVisible()) {
+                    refreshGridLayout();
+                } else if (speakerViewPane.isVisible()) {
+                    updateSpeakerView();
+                }
             });
         });
         
@@ -355,8 +357,12 @@ public class MeetingPanelController {
                     // Attach video track
                     tile.attachVideoTrack((VideoTrack) track);
                     
-                    // Update grid to show new video
-                    refreshGridLayout();
+                    // Update active view (grid or speaker)
+                    if (videoGrid.isVisible()) {
+                        refreshGridLayout();
+                    } else if (speakerViewPane.isVisible()) {
+                        updateSpeakerView();
+                    }
                 }
             });
         });
@@ -522,7 +528,13 @@ public class MeetingPanelController {
             } else {
                 disposeLocalVideoTile();
             }
-            refreshGridLayout();
+            
+            // Update active view (grid or speaker)
+            if (videoGrid.isVisible()) {
+                refreshGridLayout();
+            } else if (speakerViewPane.isVisible()) {
+                updateSpeakerView();
+            }
         }
     }
 
@@ -653,10 +665,111 @@ public class MeetingPanelController {
     }
 
     private void updateSpeakerView() {
-        // TODO: Implement speaker view with real video tracks
-        // For now, just show grid view
-        System.out.println("[MeetingPanel] Speaker view not yet implemented for group calls");
-        showGridView();
+        speakerViewPane.getChildren().clear();
+        
+        // Count total videos (local + remote)
+        int numVideos = (localVideoTile != null ? 1 : 0) + videoTiles.size();
+        
+        if (numVideos == 0) {
+            System.out.println("[MeetingPanel] No videos for speaker view");
+            return;
+        }
+        
+        System.out.printf("[MeetingPanel] Updating speaker view: %d videos%n", numVideos);
+        
+        // For now, use the first available video as "active speaker"
+        // TODO: Implement voice activity detection to auto-switch
+        VideoTile activeSpeakerTile = null;
+        
+        // Priority: remote video first (more interesting), then local
+        if (!videoTiles.isEmpty()) {
+            activeSpeakerTile = videoTiles.values().iterator().next();
+        } else if (localVideoTile != null) {
+            activeSpeakerTile = localVideoTile;
+        }
+        
+        if (activeSpeakerTile == null) {
+            System.out.println("[MeetingPanel] No active speaker tile");
+            return;
+        }
+        
+        // CENTER: Large active speaker video (wrapped in StackPane for centering)
+        StackPane centerContainer = new StackPane(activeSpeakerTile.container);
+        centerContainer.setStyle("-fx-background-color: #0f172a;");
+        speakerViewPane.setCenter(centerContainer);
+        
+        // BOTTOM: Thumbnail strip of other participants (if any)
+        if (numVideos > 1) {
+            HBox thumbnailStrip = new HBox(12);
+            thumbnailStrip.setAlignment(Pos.CENTER);
+            thumbnailStrip.setPadding(new Insets(12));
+            thumbnailStrip.setStyle("-fx-background-color: rgba(15, 23, 42, 0.9);");
+            
+            // Add all tiles EXCEPT the active speaker as thumbnails
+            if (localVideoTile != null && localVideoTile != activeSpeakerTile) {
+                StackPane thumb = createThumbnailView(localVideoTile);
+                thumbnailStrip.getChildren().add(thumb);
+            }
+            
+            for (VideoTile tile : videoTiles.values()) {
+                if (tile != activeSpeakerTile) {
+                    StackPane thumb = createThumbnailView(tile);
+                    thumbnailStrip.getChildren().add(thumb);
+                }
+            }
+            
+            // Wrap in ScrollPane for many participants
+            ScrollPane scrollPane = new ScrollPane(thumbnailStrip);
+            scrollPane.setFitToHeight(true);
+            scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+            scrollPane.setStyle("-fx-background: transparent; -fx-background-color: rgba(15, 23, 42, 0.9);");
+            scrollPane.setPrefHeight(160);
+            scrollPane.setMaxHeight(160);
+            
+            speakerViewPane.setBottom(scrollPane);
+        }
+    }
+    
+    /**
+     * Create a thumbnail view for speaker view bottom strip
+     * Creates a NEW container referencing the same VideoPanel
+     */
+    private StackPane createThumbnailView(VideoTile tile) {
+        // Create a small container showing the name and video preview
+        StackPane thumbnail = new StackPane();
+        thumbnail.setPrefSize(180, 120);
+        thumbnail.setMaxSize(180, 120);
+        thumbnail.setMinSize(180, 120);
+        thumbnail.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8;");
+        
+        // Add name label at bottom
+        Label nameLabel = new Label(tile.peerUsername);
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-size: 11px; -fx-background-color: rgba(0,0,0,0.6); -fx-padding: 4 8; -fx-background-radius: 4;");
+        StackPane.setAlignment(nameLabel, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(nameLabel, new Insets(0, 0, 8, 0));
+        
+        // Note: We can't show the actual video here without duplicating the VideoPanel
+        // In a real implementation, we'd need to create a separate small VideoPanel
+        // For now, just show a placeholder with the name
+        VBox placeholder = new VBox(8);
+        placeholder.setAlignment(Pos.CENTER);
+        placeholder.setStyle("-fx-background-color: #334155;");
+        
+        FontIcon cameraIcon = new FontIcon("fas-video");
+        cameraIcon.setIconSize(24);
+        cameraIcon.setStyle("-fx-icon-color: #64748b;");
+        
+        placeholder.getChildren().addAll(cameraIcon, nameLabel);
+        thumbnail.getChildren().add(placeholder);
+        
+        // Click to make this the active speaker (cycle through speakers)
+        thumbnail.setOnMouseClicked(e -> {
+            updateSpeakerView();
+        });
+        thumbnail.setStyle(thumbnail.getStyle() + "; -fx-cursor: hand;");
+        
+        return thumbnail;
     }
 
     /**

@@ -332,9 +332,22 @@ public class JoinMeetController {
             javafx.scene.layout.StackPane loadingPane = new javafx.scene.layout.StackPane(progressIndicator);
             loadingPane.setStyle("-fx-background-color: rgba(0, 0, 0, 0.5);");
             
-            // Add loading overlay
-            javafx.scene.layout.StackPane rootPane = (javafx.scene.layout.StackPane) roomIdField.getScene().getRoot();
-            rootPane.getChildren().add(loadingPane);
+            // Add loading overlay to the parent container (not root)
+            // Store references for removal in callbacks
+            javafx.scene.Parent root = roomIdField.getScene().getRoot();
+            final javafx.scene.layout.StackPane[] overlayWrapper = {null};
+            final javafx.scene.layout.Pane[] overlayParent = {null};
+            
+            if (root instanceof javafx.scene.layout.Pane) {
+                overlayParent[0] = (javafx.scene.layout.Pane) root;
+                overlayParent[0].getChildren().add(loadingPane);
+            } else if (root instanceof javafx.scene.layout.BorderPane) {
+                // For BorderPane, overlay on center with wrapper
+                overlayWrapper[0] = new javafx.scene.layout.StackPane();
+                javafx.scene.Node center = ((javafx.scene.layout.BorderPane) root).getCenter();
+                overlayWrapper[0].getChildren().addAll(center, loadingPane);
+                ((javafx.scene.layout.BorderPane) root).setCenter(overlayWrapper[0]);
+            }
             
             // Initialize WebRTC for validation
             if (!com.saferoom.webrtc.WebRTCClient.isInitialized()) {
@@ -361,7 +374,16 @@ public class JoinMeetController {
             tempManager.setOnRoomErrorCallback((errorType, roomIdError) -> {
                 javafx.application.Platform.runLater(() -> {
                     // Remove loading overlay
-                    rootPane.getChildren().remove(loadingPane);
+                    if (overlayParent[0] != null) {
+                        overlayParent[0].getChildren().remove(loadingPane);
+                    } else if (overlayWrapper[0] != null) {
+                        // Restore original center content
+                        javafx.scene.Parent rootForRemoval = roomIdField.getScene().getRoot();
+                        if (rootForRemoval instanceof javafx.scene.layout.BorderPane) {
+                            javafx.scene.Node originalCenter = overlayWrapper[0].getChildren().get(0);
+                            ((javafx.scene.layout.BorderPane) rootForRemoval).setCenter(originalCenter);
+                        }
+                    }
                     
                     // Show error
                     if ("ROOM_NOT_FOUND".equals(errorType)) {
@@ -386,7 +408,16 @@ public class JoinMeetController {
                     roomValidated[0] = true;
                     
                     // Remove loading overlay
-                    rootPane.getChildren().remove(loadingPane);
+                    if (overlayParent[0] != null) {
+                        overlayParent[0].getChildren().remove(loadingPane);
+                    } else if (overlayWrapper[0] != null) {
+                        // Restore original center content
+                        javafx.scene.Parent rootForRemoval = roomIdField.getScene().getRoot();
+                        if (rootForRemoval instanceof javafx.scene.layout.BorderPane) {
+                            javafx.scene.Node originalCenter = overlayWrapper[0].getChildren().get(0);
+                            ((javafx.scene.layout.BorderPane) rootForRemoval).setCenter(originalCenter);
+                        }
+                    }
                     
                     // Leave temporary connection
                     tempManager.leaveRoom();
@@ -400,8 +431,9 @@ public class JoinMeetController {
                 });
             });
             
-            // Attempt to join room (validation)
-            tempManager.joinRoom(roomId, withMic, withCamera, "JOIN_MODE");
+            // Attempt to join room (validation only - no media streaming)
+            // Pass false for both audio and video since we're only validating room existence
+            tempManager.joinRoom(roomId, false, false, "JOIN_MODE");
             
         } catch (Exception e) {
             System.err.printf("[JoinMeet] Error validating room: %s%n", e.getMessage());
