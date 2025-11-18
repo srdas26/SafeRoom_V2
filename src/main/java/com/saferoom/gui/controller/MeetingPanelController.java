@@ -73,7 +73,6 @@ public class MeetingPanelController {
     private MeetingRoleStrategy roleStrategy;
     private boolean isPanelOpen = false;
     private final Duration animationDuration = Duration.millis(350);
-    private static final double DEFAULT_RIGHT_PANEL_WIDTH = 320.0;
     private final DoubleProperty contentRightAnchorProperty = new SimpleDoubleProperty(0.0);
     
     // ===============================
@@ -93,12 +92,11 @@ public class MeetingPanelController {
         windowStateManager.setupBasicWindowDrag(centerContentAnchorPane);
         
         contentRightAnchorProperty.addListener((obs, oldValue, newValue) -> {
-            double panelWidth = getRightPanelWidth();
             AnchorPane.setRightAnchor(contentStackPane, newValue.doubleValue());
-            AnchorPane.setRightAnchor(rightPanelVBox, newValue.doubleValue() - panelWidth);
+            AnchorPane.setRightAnchor(rightPanelVBox, newValue.doubleValue() - rightPanelVBox.getPrefWidth());
         });
         AnchorPane.setRightAnchor(contentStackPane, 0.0);
-        AnchorPane.setRightAnchor(rightPanelVBox, -getRightPanelWidth());
+        AnchorPane.setRightAnchor(rightPanelVBox, -rightPanelVBox.getPrefWidth());
         rightPanelVBox.setVisible(false);
         rightPanelVBox.setManaged(false);
         
@@ -233,10 +231,8 @@ public class MeetingPanelController {
                 System.out.printf("[MeetingPanel] Peer joined: %s%n", peerUsername);
                 
                 // ESKİ TASARIM: Add peer to participant list (camera OFF initially, will turn ON when track arrives)
-                if (findParticipantByUsername(peerUsername) == null) {
-                    Participant peer = new Participant(peerUsername, UserRole.USER, false, true);
-                    currentMeeting.getParticipants().add(peer);
-                }
+                Participant peer = new Participant(peerUsername, UserRole.USER, false, true);
+                currentMeeting.getParticipants().add(peer);
                 
                 updateParticipantsList();
                 updateVideoGrid();  // ESKİ TASARIM: Refresh grid (will show avatar placeholder)
@@ -508,8 +504,7 @@ public class MeetingPanelController {
         }
 
         Timeline timeline = new Timeline();
-        double panelWidth = getRightPanelWidth();
-        double targetAnchorValue = closing ? 0.0 : panelWidth;
+        double targetAnchorValue = closing ? 0.0 : rightPanelVBox.getPrefWidth();
         KeyValue keyValue = new KeyValue(contentRightAnchorProperty, targetAnchorValue);
         KeyFrame keyFrame = new KeyFrame(animationDuration, keyValue);
         timeline.getKeyFrames().add(keyFrame);
@@ -635,6 +630,11 @@ public class MeetingPanelController {
         int numParticipants = currentMeeting.getParticipants().size();
         if (numParticipants == 0) return;
         
+        if (numParticipants == 3) {
+            applyDiscordStyleThreeUpLayout(currentMeeting.getParticipants());
+            return;
+        }
+        
         // ESKİ TASARIM: Dynamic grid calculation
         int numColumns = (int) Math.ceil(Math.sqrt(numParticipants));
         int numRows = (int) Math.ceil((double) numParticipants / numColumns);
@@ -668,6 +668,45 @@ public class MeetingPanelController {
                 row++;
             }
         }
+    }
+    
+    private void applyDiscordStyleThreeUpLayout(List<Participant> participants) {
+        videoGrid.getChildren().clear();
+        videoGrid.getColumnConstraints().clear();
+        videoGrid.getRowConstraints().clear();
+        
+        ColumnConstraints firstHalf = new ColumnConstraints();
+        firstHalf.setPercentWidth(50);
+        firstHalf.setHgrow(Priority.ALWAYS);
+        ColumnConstraints secondHalf = new ColumnConstraints();
+        secondHalf.setPercentWidth(50);
+        secondHalf.setHgrow(Priority.ALWAYS);
+        videoGrid.getColumnConstraints().addAll(firstHalf, secondHalf);
+        
+        RowConstraints topRow = new RowConstraints();
+        topRow.setPercentHeight(55);
+        topRow.setVgrow(Priority.ALWAYS);
+        RowConstraints bottomRow = new RowConstraints();
+        bottomRow.setPercentHeight(45);
+        bottomRow.setVgrow(Priority.ALWAYS);
+        videoGrid.getRowConstraints().addAll(topRow, bottomRow);
+        
+        for (int i = 0; i < 2; i++) {
+            Participant participant = participants.get(i);
+            StackPane tile = createVideoTile(participant);
+            tile.getStyleClass().add("three-up-top");
+            GridPane.setHgrow(tile, Priority.ALWAYS);
+            GridPane.setVgrow(tile, Priority.ALWAYS);
+            videoGrid.add(tile, i, 0);
+        }
+        
+        Participant bottomParticipant = participants.get(2);
+        StackPane bottomTile = createVideoTile(bottomParticipant);
+        bottomTile.getStyleClass().add("three-up-bottom");
+        GridPane.setHgrow(bottomTile, Priority.ALWAYS);
+        GridPane.setVgrow(bottomTile, Priority.ALWAYS);
+        GridPane.setColumnSpan(bottomTile, 2);
+        videoGrid.add(bottomTile, 0, 1);
     }
     
     /**
@@ -784,17 +823,7 @@ public class MeetingPanelController {
         }
     }
 
-    private double getRightPanelWidth() {
-        double width = rightPanelVBox.getWidth();
-        if (width <= 0) {
-            width = rightPanelVBox.getPrefWidth();
-        }
-        if (width <= 0) {
-            width = DEFAULT_RIGHT_PANEL_WIDTH;
-        }
-        return width;
-    }
-
+ 
     private boolean attachTrackIfPanelReady(String participantName, VideoTrack track) {
         VideoPanel panel = participantVideoPanels.get(participantName);
         if (panel != null) {
