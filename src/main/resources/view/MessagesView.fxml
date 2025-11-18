@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <AnchorPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.saferoom.gui.controller.MessagesController">
@@ -9,14 +19,52 @@
         <SplitPane fx:id="mainSplitPane" dividerPositions="0.3" styleClass="messages-container" stylesheets="@../styles/styles.css"
                    AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
             <items>
+
                 <BorderPane fx:id="contactListPane" minWidth="280.0" maxWidth="450.0" styleClass="contact-list-pane">
                     <top>
-                        <VBox styleClass="search-box-container">
-                            <children><TextField promptText="Search messages..." styleClass="search-field" /></children>
+                        <VBox alignment="CENTER" prefHeight="80.0" minHeight="80.0" styleClass="search-box-container">
+                            <padding>
+                                <Insets left="15.0" right="15.0" />
+                            </padding>
+                            <children>
+                                <TextField fx:id="searchField" promptText="Search messages..." styleClass="search-field" />
+                            </children>
                         </VBox>
                     </top>
+
                     <center>
-                        <ListView fx:id="contactListView" styleClass="contact-list-view" />
+                        <StackPane>
+                            <children>
+                                <ListView fx:id="contactListView" styleClass="contact-list-view" />
+
+                                <VBox fx:id="emptyContactsPlaceholder" alignment="CENTER" spacing="15.0" visible="false" managed="false">
+                                    <children>
+                                        <StackPane>
+                                            <children>
+                                                <Circle radius="40.0" styleClass="chat-empty-glow-simple" />
+
+                                                <FontIcon iconLiteral="fas-user-plus" styleClass="chat-empty-icon-sharp" iconSize="48"/>
+                                            </children>
+                                            <VBox.margin>
+                                                <Insets bottom="5.0" />
+                                            </VBox.margin>
+                                        </StackPane>
+
+                                        <Label styleClass="chat-empty-title-simple" text="No Contacts Yet" style="-fx-font-size: 18px;" />
+                                        <Label styleClass="chat-empty-subtitle-simple" text="Add a friend to start chatting." />
+
+                                        <Button fx:id="addFriendButton" text="Add Friend" styleClass="primary-soft-btn" onAction="#handleAddFriendClick">
+                                            <graphic>
+                                                <FontIcon iconLiteral="fas-plus" iconColor="white" iconSize="12"/>
+                                            </graphic>
+                                            <VBox.margin>
+                                                <Insets top="10.0" />
+                                            </VBox.margin>
+                                        </Button>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </StackPane>
                     </center>
                 </BorderPane>
 

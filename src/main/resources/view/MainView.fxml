@@ -3,26 +3,31 @@
 <?import com.jfoenix.controls.JFXButton?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.Group?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.shape.SVGPath?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<BorderPane fx:id="mainPane" prefHeight="800.0" prefWidth="1280.0" styleClass="main-pane" stylesheets="@../styles/styles.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.saferoom.gui.controller.MainController">
+<BorderPane fx:id="mainPane"
+            prefHeight="800.0"
+            prefWidth="1280.0"
+            maxWidth="Infinity"
+            maxHeight="Infinity"
+            styleClass="main-pane"
+            stylesheets="@../styles/styles.css"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.saferoom.gui.controller.MainController">
 
     <left>
         <VBox styleClass="sidebar, sidebar-minimal">
             <children>
-                <HBox alignment="CENTER" prefHeight="45.0" styleClass="sidebar-header-minimal">
-
+                <HBox fx:id="sidebarHeader" alignment="CENTER" prefHeight="45.0" styleClass="sidebar-header-minimal">
                 </HBox>
 
                 <VBox fx:id="navBox" alignment="CENTER" spacing="16" VBox.vgrow="ALWAYS">
@@ -51,7 +56,6 @@
                     </children>
                 </VBox>
 
-                <!-- User Profile and Notifications at bottom of sidebar -->
                 <VBox spacing="6" styleClass="sidebar-bottom" alignment="CENTER">
                     <padding>
                         <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
@@ -76,12 +80,11 @@
     </left>
 
     <center>
-        <BorderPane styleClass="content-pane">
+        <BorderPane styleClass="content-pane" maxWidth="Infinity" maxHeight="Infinity">
             <top>
-                <BorderPane prefHeight="32.0" styleClass="header-bar">
+                <BorderPane fx:id="headerBar" prefHeight="32.0" styleClass="header-bar">
                     <right>
-                        <!-- Window Control Buttons Only -->
-                        <HBox alignment="CENTER" spacing="0" styleClass="window-controls">
+                        <HBox fx:id="windowControls" alignment="CENTER" spacing="0" styleClass="window-controls">
                             <children>
                                 <JFXButton fx:id="minimizeButton" styleClass="window-control-button, minimize-button" text="">
                                     <graphic>
@@ -107,8 +110,16 @@
                 </BorderPane>
             </top>
             <center>
-                <StackPane fx:id="contentArea" styleClass="content-scroll-pane" BorderPane.alignment="CENTER" />
+                <AnchorPane>
+                    <StackPane fx:id="contentArea"
+                               styleClass="content-scroll-pane"
+                               AnchorPane.bottomAnchor="0.0"
+                               AnchorPane.leftAnchor="0.0"
+                               AnchorPane.rightAnchor="0.0"
+                               AnchorPane.topAnchor="0.0" />
+                </AnchorPane>
             </center>
+
         </BorderPane>
     </center>
 </BorderPane>

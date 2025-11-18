@@ -46,29 +46,29 @@ public class LoginController {
     private static final String REMEMBER_KEY = "remember_me";
 
     private boolean containsSqlInjection(String input) {
-    // SQL injection pattern - daha hızlı regex kullanımı
-    String sqlInjectionPattern = "(?i).*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|OR\\s+\\d|AND\\s+\\d|--|/\\*|\\*/|xp_|sp_|'|\"|;|<|>|SCRIPT|IFRAME|ONLOAD).*";
-    return input.matches(sqlInjectionPattern);
-}
+        // SQL injection pattern - daha hızlı regex kullanımı
+        String sqlInjectionPattern = "(?i).*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|OR\\s+\\d|AND\\s+\\d|--|/\\*|\\*/|xp_|sp_|'|\"|;|<|>|SCRIPT|IFRAME|ONLOAD).*";
+        return input.matches(sqlInjectionPattern);
+    }
 
-private boolean isValidUsernameOrEmail(String input) {
-    // Username veya email için kontrol (@ karakteri dahil)
-    return input.matches("^[a-zA-Z0-9._@-]+$");
-}
+    private boolean isValidUsernameOrEmail(String input) {
+        // Username veya email için kontrol (@ karakteri dahil)
+        return input.matches("^[a-zA-Z0-9._@-]+$");
+    }
 
-private boolean isValidPassword(String password) {
-    // Password için daha geniş karakter seti (özel karakterler dahil)
-    return password.matches("^[a-zA-Z0-9._@#$%^&*()+=\\[\\]{}|\\\\:;\"'<>,.?/~`!-]+$");
-}
+    private boolean isValidPassword(String password) {
+        // Password için daha geniş karakter seti (özel karakterler dahil)
+        return password.matches("^[a-zA-Z0-9._@#$%^&*()+=\\[\\]{}|\\\\:;\"'<>,.?/~`!-]+$");
+    }
 
-private void logSecurityIncident(String attemptedUsername) {
-    System.err.println("SECURITY ALERT: SQL Injection attempt detected!");
-    System.err.println("Username attempt: " + attemptedUsername);
-    System.err.println("Timestamp: " + java.time.LocalDateTime.now());
-    System.err.println("This incident has been logged and will be reported.");
-    
-    // Buraya IP loglama, email gönderme vs ekleyebilirsin
-}
+    private void logSecurityIncident(String attemptedUsername) {
+        System.err.println("SECURITY ALERT: SQL Injection attempt detected!");
+        System.err.println("Username attempt: " + attemptedUsername);
+        System.err.println("Timestamp: " + java.time.LocalDateTime.now());
+        System.err.println("This incident has been logged and will be reported.");
+
+        // Buraya IP loglama, email gönderme vs ekleyebilirsin
+    }
 
     @FXML
     public void initialize() {
@@ -79,159 +79,159 @@ private void logSecurityIncident(String attemptedUsername) {
         githubLoginButton.setOnAction(event -> handleGitHubLogin());
         passwordField.setOnAction(event -> handleSignIn());
         closeButton.setOnAction(event -> handleClose());
-        
+
         // Load saved credentials if remember me was checked
         loadSavedCredentials();
     }
 
     private void handleSignIn() {
-       String username = usernameField.getText().trim();
-       String password = passwordField.getText().trim();
+        String username = usernameField.getText().trim();
+        String password = passwordField.getText().trim();
 
-         if (username.isEmpty() || password.isEmpty()) {
-              showError("Kullanıcı adı ve şifre alanlarını doldurun.");
-              return;
-         }
-         if (containsSqlInjection(username) || containsSqlInjection(password)) {
+        if (username.isEmpty() || password.isEmpty()) {
+            showError("Kullanıcı adı ve şifre alanlarını doldurun.");
+            return;
+        }
+        if (containsSqlInjection(username) || containsSqlInjection(password)) {
             showError("Security Alert: Suspicious input detected. This will report on your IP!");
-            logSecurityIncident(username); 
-        return;
-    }
-    
+            logSecurityIncident(username);
+            return;
+        }
+
         if (username.length() > 50 || password.length() > 100) {
             showError("Username or password too long!");
-        return;
+            return;
         }
-    
-         if (!isValidUsernameOrEmail(username) || !isValidPassword(password)) {
-            showError("Invalid characters detected. This will report on your IP!");
-        return;
-    }
 
-         
-       try {
-           String loginResult = ClientMenu.Login(username, password);
-           
-           if (loginResult.equals("N_REGISTER")) {
-               showError("User not registered!");
-               return;
-           } else if (loginResult.equals("WRONG_PASSWORD")) {
-               showError("Wrong password!");
-               return;
-           } else if (loginResult.equals("BLOCKED_USER")) {
-               showError("Account blocked! Please contact support.");
-               return;
-           } else if (loginResult.equals("ERROR")) {
-               showError("Connection error occurred!");
-               return;
-           } else {
-               // Login başarılı, loginResult eksik bilgiyi içeriyor
-               // Save credentials if Remember Me is checked
-               if (rememberMe.isSelected()) {
-                   saveCredentials(username, password);
-               } else {
-                   clearSavedCredentials();
-               }
-               
-               // Create UserInfo for traditional login and save to session
-               UserInfo traditionalUser = new UserInfo();
-               
-               // Kullanıcının hangi şekilde giriş yaptığını ve eksik bilgiyi belirle
-               if (username.contains("@")) {
-                   // Email ile giriş yapmış, loginResult username içeriyor
-                   traditionalUser.setName(loginResult); // Server'dan gelen username
-                   traditionalUser.setEmail(username); // Kullanıcının girdiği email
-               } else {
-                   // Username ile giriş yapmış, loginResult email içeriyor
-                   traditionalUser.setName(username); // Kullanıcının girdiği username
-                   traditionalUser.setEmail(loginResult); // Server'dan gelen email
-               }
-               
-               traditionalUser.setProvider("Traditional");
-               UserSession.getInstance().setCurrentUser(traditionalUser, "traditional");
-               
-               // Stop any existing heartbeat service before starting a new one
-               com.saferoom.gui.utils.HeartbeatService heartbeatService = com.saferoom.gui.utils.HeartbeatService.getInstance();
-               if (heartbeatService.isRunning()) {
-                   System.out.println("🛑 Stopping existing heartbeat service before starting new one");
-                   heartbeatService.stopHeartbeat();
-                   // Kısa bir bekle ki cleanup tamamlansın
-                   try {
-                       Thread.sleep(500);
-                   } catch (InterruptedException e) {
-                       Thread.currentThread().interrupt();
-                   }
-               }
-               
-               // Start heartbeat service
-               heartbeatService.startHeartbeat(traditionalUser.getName());
-               
-               // Register user for P2P communication
-               Platform.runLater(() -> {
-                   new Thread(() -> {
-                       try {
-                           boolean registered = com.saferoom.client.ClientMenu.registerP2PUser(traditionalUser.getName());
-                           if (registered) {
-                               System.out.println("✅ P2P registration successful for user: " + traditionalUser.getName());
-                               
-                               // ✅ P2P registered - WebRTC will handle NAT traversal automatically
-                               System.out.println("✅ P2P ready for user: " + traditionalUser.getName());
-                           } else {
-                               System.err.println("⚠️ P2P registration failed for user: " + traditionalUser.getName());
-                           }
-                       } catch (Exception e) {
-                           System.err.println("❌ P2P registration error: " + e.getMessage());
-                       }
-                   }).start();
-               });
-               
-               try {
-                 Stage loginStage = (Stage) rootPane.getScene().getWindow();
-                 loginStage.close();
-                 Stage mainStage = new Stage();
-                  mainStage.initStyle(StageStyle.TRANSPARENT);
-                  mainStage.setTitle("SafeRoom");
-                 Parent mainRoot = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/view/MainView.fxml")));
-                 Scene mainScene = new Scene(mainRoot, 1280, 800);
-                 mainScene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-                 String cssPath = "/styles/styles.css";
-                 URL cssUrl = getClass().getResource(cssPath);
-                    if (cssUrl != null) {
-                     mainScene.getStylesheets().add(cssUrl.toExternalForm());
+        if (!isValidUsernameOrEmail(username) || !isValidPassword(password)) {
+            showError("Invalid characters detected. This will report on your IP!");
+            return;
+        }
+
+
+        try {
+            String loginResult = ClientMenu.Login(username, password);
+
+            if (loginResult.equals("N_REGISTER")) {
+                showError("User not registered!");
+                return;
+            } else if (loginResult.equals("WRONG_PASSWORD")) {
+                showError("Wrong password!");
+                return;
+            } else if (loginResult.equals("BLOCKED_USER")) {
+                showError("Account blocked! Please contact support.");
+                return;
+            } else if (loginResult.equals("ERROR")) {
+                showError("Connection error occurred!");
+                return;
+            } else {
+                // Login başarılı, loginResult eksik bilgiyi içeriyor
+                // Save credentials if Remember Me is checked
+                if (rememberMe.isSelected()) {
+                    saveCredentials(username, password);
+                } else {
+                    clearSavedCredentials();
+                }
+
+                // Create UserInfo for traditional login and save to session
+                UserInfo traditionalUser = new UserInfo();
+
+                // Kullanıcının hangi şekilde giriş yaptığını ve eksik bilgiyi belirle
+                if (username.contains("@")) {
+                    // Email ile giriş yapmış, loginResult username içeriyor
+                    traditionalUser.setName(loginResult); // Server'dan gelen username
+                    traditionalUser.setEmail(username); // Kullanıcının girdiği email
+                } else {
+                    // Username ile giriş yapmış, loginResult email içeriyor
+                    traditionalUser.setName(username); // Kullanıcının girdiği username
+                    traditionalUser.setEmail(loginResult); // Server'dan gelen email
+                }
+
+                traditionalUser.setProvider("Traditional");
+                UserSession.getInstance().setCurrentUser(traditionalUser, "traditional");
+
+                // Stop any existing heartbeat service before starting a new one
+                com.saferoom.gui.utils.HeartbeatService heartbeatService = com.saferoom.gui.utils.HeartbeatService.getInstance();
+                if (heartbeatService.isRunning()) {
+                    System.out.println("🛑 Stopping existing heartbeat service before starting new one");
+                    heartbeatService.stopHeartbeat();
+                    // Kısa bir bekle ki cleanup tamamlansın
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
-                mainStage.setScene(mainScene);
-                mainStage.setResizable(true);
-                mainStage.setMinWidth(1024);
-                mainStage.setMinHeight(768);
-                mainStage.show();
-                
-                // Refresh user info in MainController after successful traditional login
+                }
+
+                // Start heartbeat service
+                heartbeatService.startHeartbeat(traditionalUser.getName());
+
+                // Register user for P2P communication
                 Platform.runLater(() -> {
-                    MainController mainController = MainController.getInstance();
-                    if (mainController != null) {
-                        mainController.refreshUserInfo();
-                    }
+                    new Thread(() -> {
+                        try {
+                            boolean registered = com.saferoom.client.ClientMenu.registerP2PUser(traditionalUser.getName());
+                            if (registered) {
+                                System.out.println("✅ P2P registration successful for user: " + traditionalUser.getName());
+
+                                // ✅ P2P registered - WebRTC will handle NAT traversal automatically
+                                System.out.println("✅ P2P ready for user: " + traditionalUser.getName());
+                            } else {
+                                System.err.println("⚠️ P2P registration failed for user: " + traditionalUser.getName());
+                            }
+                        } catch (Exception e) {
+                            System.err.println("❌ P2P registration error: " + e.getMessage());
+                        }
+                    }).start();
                 });
+
+                try {
+                    Stage loginStage = (Stage) rootPane.getScene().getWindow();
+                    loginStage.close();
+                    Stage mainStage = new Stage();
+                    mainStage.initStyle(StageStyle.TRANSPARENT);
+                    mainStage.setTitle("SafeRoom");
+                    Parent mainRoot = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/view/MainView.fxml")));
+                    Scene mainScene = new Scene(mainRoot, 1280, 800);
+                    mainScene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                    String cssPath = "/styles/styles.css";
+                    URL cssUrl = getClass().getResource(cssPath);
+                    if (cssUrl != null) {
+                        mainScene.getStylesheets().add(cssUrl.toExternalForm());
+                    }
+                    mainStage.setScene(mainScene);
+                    mainStage.setResizable(true);
+                    mainStage.setMinWidth(1024);
+                    mainStage.setMinHeight(768);
+                    mainStage.show();
+
+                    // Refresh user info in MainController after successful traditional login
+                    Platform.runLater(() -> {
+                        MainController mainController = MainController.getInstance();
+                        if (mainController != null) {
+                            mainController.refreshUserInfo();
+                        }
+                    });
                 } catch (IOException e) {
                     e.printStackTrace();
                     showError("Ana sayfa yüklenemedi.");
                 }
             }
-       } catch (io.grpc.StatusRuntimeException e) {
-           System.err.println("gRPC Connection Error: " + e.getMessage());
-           if (e.getStatus().getCode() == io.grpc.Status.Code.CANCELLED) {
-               showError("Server connection failed. Please check if the server is running.");
-           } else if (e.getStatus().getCode() == io.grpc.Status.Code.UNAVAILABLE) {
-               showError("Server is unavailable. Please try again later.");
-           } else {
-               showError("Connection error: " + e.getStatus().getDescription());
-           }
-       } catch (Exception e) {
-           System.err.println("Unexpected error during login: " + e.getMessage());
-           e.printStackTrace();
-           showError("An unexpected error occurred. Please try again.");
-       }
-   
+        } catch (io.grpc.StatusRuntimeException e) {
+            System.err.println("gRPC Connection Error: " + e.getMessage());
+            if (e.getStatus().getCode() == io.grpc.Status.Code.CANCELLED) {
+                showError("Server connection failed. Please check if the server is running.");
+            } else if (e.getStatus().getCode() == io.grpc.Status.Code.UNAVAILABLE) {
+                showError("Server is unavailable. Please try again later.");
+            } else {
+                showError("Connection error: " + e.getStatus().getDescription());
+            }
+        } catch (Exception e) {
+            System.err.println("Unexpected error during login: " + e.getMessage());
+            e.printStackTrace();
+            showError("An unexpected error occurred. Please try again.");
+        }
+
     }
 
     private void handleSignUp() {
@@ -312,21 +312,21 @@ private void logSecurityIncident(String attemptedUsername) {
             showError("Failed to load forgot password screen.");
         }
     }
-    private void handleGoogleLogin() { 
+    private void handleGoogleLogin() {
         System.out.println("Starting Google OAuth...");
-        
+
         // Show loading state
         googleLoginButton.setDisable(true);
         googleLoginButton.setText("Connecting...");
-        
+
         OAuthManager.authenticateWithGoogle(userInfo -> {
             // Reset button state
             googleLoginButton.setDisable(false);
             googleLoginButton.setText("Google");
-            
+
             if (userInfo != null) {
                 System.out.println("Google OAuth successful: " + userInfo);
-                
+
                 // Check if user exists in database, if not create account
                 handleOAuthSuccess(userInfo);
             } else {
@@ -334,22 +334,22 @@ private void logSecurityIncident(String attemptedUsername) {
             }
         });
     }
-    
-    private void handleGitHubLogin() { 
+
+    private void handleGitHubLogin() {
         System.out.println("Starting GitHub OAuth...");
-        
+
         // Show loading state
         githubLoginButton.setDisable(true);
         githubLoginButton.setText("Connecting...");
-        
+
         OAuthManager.authenticateWithGitHub(userInfo -> {
             // Reset button state
             githubLoginButton.setDisable(false);
             githubLoginButton.setText("GitHub");
-            
+
             if (userInfo != null) {
                 System.out.println("GitHub OAuth successful: " + userInfo);
-                
+
                 // Check if user exists in database, if not create account
                 handleOAuthSuccess(userInfo);
             } else {
@@ -357,7 +357,7 @@ private void logSecurityIncident(String attemptedUsername) {
             }
         });
     }
-    
+
     /**
      * Handle successful OAuth authentication
      */
@@ -365,10 +365,10 @@ private void logSecurityIncident(String attemptedUsername) {
         try {
             // Save user session
             UserSession.getInstance().setCurrentUser(userInfo, "oauth");
-            
+
             // Start heartbeat service
             com.saferoom.gui.utils.HeartbeatService.getInstance().startHeartbeat(userInfo.getName());
-            
+
             // Register user for P2P communication
             Platform.runLater(() -> {
                 new Thread(() -> {
@@ -376,7 +376,7 @@ private void logSecurityIncident(String attemptedUsername) {
                         boolean registered = com.saferoom.client.ClientMenu.registerP2PUser(userInfo.getName());
                         if (registered) {
                             System.out.println("✅ P2P registration successful for OAuth user: " + userInfo.getName());
-                            
+
                             // ✅ P2P registered - WebRTC will handle NAT traversal automatically
                             System.out.println("✅ P2P ready for OAuth user: " + userInfo.getName());
                         } else {
@@ -387,19 +387,19 @@ private void logSecurityIncident(String attemptedUsername) {
                     }
                 }).start();
             });
-            
+
             // TODO: Check if user exists in database
             // If not, create user account with OAuth info
-            
+
             // For now, directly proceed to main view
             proceedToMainView(userInfo);
-            
+
         } catch (Exception e) {
             System.err.println("OAuth success handling error: " + e.getMessage());
             showError("Authentication completed but login failed. Please try again.");
         }
     }
-    
+
     /**
      * Proceed to main application view
      */
@@ -407,36 +407,36 @@ private void logSecurityIncident(String attemptedUsername) {
         try {
             Stage loginStage = (Stage) rootPane.getScene().getWindow();
             loginStage.close();
-            
+
             Stage mainStage = new Stage();
             mainStage.initStyle(StageStyle.TRANSPARENT);
             mainStage.setTitle("SafeRoom - " + userInfo.getName());
-            
+
             Parent mainRoot = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/view/MainView.fxml")));
             Scene mainScene = new Scene(mainRoot, 1280, 800);
             mainScene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-            
+
             String cssPath = "/styles/styles.css";
             URL cssUrl = getClass().getResource(cssPath);
             if (cssUrl != null) {
                 mainScene.getStylesheets().add(cssUrl.toExternalForm());
             }
-            
+
             mainStage.setScene(mainScene);
             mainStage.setResizable(true);
             mainStage.setMinWidth(1024);
             mainStage.setMinHeight(768);
             mainStage.show();
-            
+
             // Refresh user info in MainController after OAuth login
             Platform.runLater(() -> {
                 if (MainController.getInstance() != null) {
                     MainController.getInstance().refreshUserInfo();
                 }
             });
-            
+
             System.out.println("Successfully logged in with " + userInfo.getProvider() + ": " + userInfo.getEmail());
-            
+
         } catch (IOException e) {
             e.printStackTrace();
             showError("Ana sayfa yüklenemedi.");
@@ -453,20 +453,20 @@ private void logSecurityIncident(String attemptedUsername) {
                 Properties props = new Properties();
                 try (FileInputStream fis = new FileInputStream(prefsFile)) {
                     props.load(fis);
-                    
+
                     String savedUsername = props.getProperty(USERNAME_KEY);
                     String savedPassword = props.getProperty(PASSWORD_KEY);
                     String rememberMeValue = props.getProperty(REMEMBER_KEY);
-                    
+
                     if (savedUsername != null && "true".equals(rememberMeValue)) {
                         usernameField.setText(savedUsername);
-                        
+
                         if (savedPassword != null) {
                             // Decrypt password
                             String decryptedPassword = simpleDecrypt(savedPassword);
                             passwordField.setText(decryptedPassword);
                         }
-                        
+
                         rememberMe.setSelected(true);
                         signInButton.requestFocus(); // Focus signin button if both fields are filled
                     }
@@ -481,12 +481,12 @@ private void logSecurityIncident(String attemptedUsername) {
         try {
             Properties props = new Properties();
             props.setProperty(USERNAME_KEY, username);
-            
+
             // Encrypt password before saving
             String encryptedPassword = simpleEncrypt(password);
             props.setProperty(PASSWORD_KEY, encryptedPassword);
             props.setProperty(REMEMBER_KEY, "true");
-            
+
             try (FileOutputStream fos = new FileOutputStream(USER_PREFS_FILE)) {
                 props.store(fos, "SafeRoom User Preferences");
             }
@@ -513,21 +513,21 @@ private void logSecurityIncident(String attemptedUsername) {
     private String simpleEncrypt(String text) {
         StringBuilder result = new StringBuilder();
         String key = "SafeRoomKey2025"; // Simple key
-        
+
         for (int i = 0; i < text.length(); i++) {
             char textChar = text.charAt(i);
             char keyChar = key.charAt(i % key.length());
             char encryptedChar = (char) (textChar ^ keyChar);
             result.append(String.format("%02X", (int) encryptedChar));
         }
-        
+
         return result.toString();
     }
 
     private String simpleDecrypt(String encryptedText) {
         StringBuilder result = new StringBuilder();
         String key = "SafeRoomKey2025"; // Same key
-        
+
         try {
             for (int i = 0; i < encryptedText.length(); i += 2) {
                 String hexByte = encryptedText.substring(i, i + 2);
@@ -540,7 +540,7 @@ private void logSecurityIncident(String attemptedUsername) {
             System.err.println("Failed to decrypt password: " + e.getMessage());
             return "";
         }
-        
+
         return result.toString();
     }
 }

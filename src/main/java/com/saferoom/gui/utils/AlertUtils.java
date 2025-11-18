@@ -10,20 +10,22 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.stage.Window; // <-- YENİ EKLENEN IMPORT
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.net.URL;
 
 /**
- * Utility class for creating custom styled alert dialogs that match the project's design theme.
- * Uses custom dialog implementation instead of standard JavaFX Alert for better styling control.
+ * Utility class for creating custom styled alert dialogs that match the
+ * project's design theme. Uses custom dialog implementation instead of standard
+ * JavaFX Alert for better styling control.
  */
 public class AlertUtils {
 
     /**
      * Shows a styled information alert dialog.
-     * 
-     * @param title The title of the alert
+     *
+     * * @param title The title of the alert
      * @param message The message to display
      */
     public static void showInfo(String title, String message) {
@@ -32,8 +34,8 @@ public class AlertUtils {
 
     /**
      * Shows a styled error alert dialog.
-     * 
-     * @param title The title of the alert
+     *
+     * * @param title The title of the alert
      * @param message The error message to display
      */
     public static void showError(String title, String message) {
@@ -42,8 +44,8 @@ public class AlertUtils {
 
     /**
      * Shows a styled warning alert dialog.
-     * 
-     * @param title The title of the alert
+     *
+     * * @param title The title of the alert
      * @param message The warning message to display
      */
     public static void showWarning(String title, String message) {
@@ -52,8 +54,8 @@ public class AlertUtils {
 
     /**
      * Shows a styled success alert dialog.
-     * 
-     * @param title The title of the alert
+     *
+     * * @param title The title of the alert
      * @param message The success message to display
      */
     public static void showSuccess(String title, String message) {
@@ -68,10 +70,10 @@ public class AlertUtils {
         ERROR("fas-exclamation-triangle", "Error"),
         WARNING("fas-exclamation-circle", "Warning"),
         SUCCESS("fas-check-circle", "Success");
-        
+
         public String iconLiteral;
         public String displayName;
-        
+
         AlertType(String iconLiteral, String displayName) {
             this.iconLiteral = iconLiteral;
             this.displayName = displayName;
@@ -83,7 +85,24 @@ public class AlertUtils {
      */
     private static void showCustomAlert(String title, String message, AlertType alertType) {
         Stage alertStage = new Stage();
-        alertStage.initModality(Modality.APPLICATION_MODAL);
+
+        // --- ÇÖZÜM BAŞLANGICI: SAHİPLİK ATAMA ---
+        // Açık olan pencerelerden ana pencereyi (sahibi) bul
+        // Bu, tam ekran modunda alert'in kaybolmasını önler.
+        Window owner = Window.getWindows().stream()
+                .filter(Window::isShowing) // Şu an görünen
+                .filter(w -> w instanceof Stage) // Bir Stage olan
+                .findFirst() // İlkini al
+                .orElse(null);
+
+        if (owner != null) {
+            // Alert'i ana pencerenin "çocuğu" yap.
+            alertStage.initOwner(owner);
+        }
+        // --- ÇÖZÜM BİTİŞİ ---
+
+        // WINDOW_MODAL: Sadece sahibini kilitler, tam ekran için daha uygundur.
+        alertStage.initModality(Modality.WINDOW_MODAL);
         alertStage.initStyle(StageStyle.TRANSPARENT);
         alertStage.setResizable(false);
 
@@ -141,7 +160,7 @@ public class AlertUtils {
         // Create scene and apply styling
         Scene scene = new Scene(mainContainer);
         scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-        
+
         // Apply CSS
         String cssPath = "/styles/styles.css";
         URL cssUrl = AlertUtils.class.getResource(cssPath);
@@ -150,12 +169,11 @@ public class AlertUtils {
         }
 
         alertStage.setScene(scene);
-        
-        // Center on screen
+
+        // Center on screen (Owner varsa onun ortasına, yoksa ekran ortasına)
         alertStage.centerOnScreen();
-        
+
         // Show and wait
         alertStage.showAndWait();
     }
-
 }
