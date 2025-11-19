@@ -12,8 +12,8 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.MembershipKey;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -32,8 +32,8 @@ public class DataChannelWrapper extends DatagramChannel {
     private final RTCDataChannel dataChannel;
     private final String remoteUsername;
     
-    // Inbound message queue (filled by DataChannel onMessage)
-    private final BlockingQueue<ByteBuffer> inboundQueue = new LinkedBlockingQueue<>();
+    // Inbound message deque (handshake packets go to front, data packets to back)
+    private final BlockingDeque<ByteBuffer> inboundQueue = new LinkedBlockingDeque<>();
     
     // Fake addresses for compatibility
     private final FakeSocketAddress localAddress;
@@ -51,16 +51,29 @@ public class DataChannelWrapper extends DatagramChannel {
      * Called by P2PConnectionManager when DataChannel receives message
      */
     public void onDataChannelMessage(RTCDataChannelBuffer buffer) {
-        ByteBuffer data = buffer.data.duplicate();
+        ByteBuffer src = buffer.data;
+        ByteBuffer duplicate = src.duplicate();
+        ByteBuffer copy = ByteBuffer.allocateDirect(duplicate.remaining());
+        copy.put(duplicate);
+        copy.flip();
         
-        // DEBUG: Log what we're receiving
-        if (data.remaining() > 0) {
-            byte signal = data.get(0);
-            System.out.printf("[Wrapper] 📥 Received signal 0x%02X (%d bytes) from %s → queue (size: %d)%n",
-                signal, data.remaining(), remoteUsername, inboundQueue.size());
+        if (copy.remaining() > 0) {
+            byte signal = copy.get(copy.position());
+            
+            // CRITICAL: Handshake packets (SYN, ACK, SYN_ACK) go to FRONT of queue
+            // This ensures FileTransferReceiver.handshake() reads these BEFORE data flood
+            if (signal == 0x01 || signal == 0x10 || signal == 0x11) {
+                System.out.printf("[Wrapper] 📥 PRIORITY signal 0x%02X (%d bytes) from %s → FRONT of queue%n",
+                    signal, copy.remaining(), remoteUsername);
+                inboundQueue.offerFirst(copy);  // Add to front
+            } else {
+                System.out.printf("[Wrapper] 📥 Received signal 0x%02X (%d bytes) from %s → queue (size: %d)%n",
+                    signal, copy.remaining(), remoteUsername, inboundQueue.size());
+                inboundQueue.offerLast(copy);   // Add to back
+            }
+        } else {
+            inboundQueue.offerLast(copy);
         }
-        
-        inboundQueue.offer(data);
     }
     
     // ========== DatagramChannel Implementation ==========
@@ -97,8 +110,8 @@ public class DataChannelWrapper extends DatagramChannel {
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         try {
-            // Poll with timeout to avoid blocking forever
-            ByteBuffer data = inboundQueue.poll(50, TimeUnit.MILLISECONDS);
+            // Poll from front (handshake packets inserted via offerFirst)
+            ByteBuffer data = inboundQueue.pollFirst(50, TimeUnit.MILLISECONDS);
             if (data == null) {
                 return null; // No data available
             }
@@ -236,7 +249,31 @@ public class DataChannelWrapper extends DatagramChannel {
     
     @Override
     public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
-        if (length == 0) return 0;
-        return write(srcs[offset]);
+        if (length <= 0) {
+            return 0;
+        }
+        int totalBytes = 0;
+        for (int i = 0; i < length; i++) {
+            ByteBuffer buffer = srcs[offset + i];
+            if (buffer != null) {
+                totalBytes += buffer.remaining();
+            }
+        }
+        if (totalBytes == 0) {
+            return 0;
+        }
+        
+        // Merge all buffers into one packet for DataChannel
+        ByteBuffer merged = ByteBuffer.allocateDirect(totalBytes);
+        for (int i = 0; i < length; i++) {
+            ByteBuffer buffer = srcs[offset + i];
+            if (buffer == null) {
+                continue;
+            }
+            merged.put(buffer);  // Consumes original buffer position
+        }
+        merged.flip();
+        send(merged, remoteAddress);
+        return totalBytes;
     }
 }
