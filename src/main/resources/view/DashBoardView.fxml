@@ -2,67 +2,133 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.layout.StackPane?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox spacing="30.0" styleClass="page-container" stylesheets="@../styles/styles.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.saferoom.gui.controller.DashboardController">
-    <padding>
-        <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
-    </padding>
+<VBox spacing="0.0" styleClass="page-container" stylesheets="@../styles/styles.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.saferoom.gui.controller.DashboardController">
     <children>
-        <VBox styleClass="welcome-banner">
+        <!-- Üst Bar: Hoşgeldin + Profil -->
+        <HBox styleClass="top-bar-modern" alignment="CENTER_LEFT" spacing="20.0">
+            <padding>
+                <Insets top="24.0" right="32.0" bottom="10.0" left="32.0" />
+            </padding>
             <children>
-                <Label fx:id="welcomeLabel" styleClass="welcome-title" text="Welcome back, Username!" />
-                <Label styleClass="welcome-subtitle" text="You have 2 new notifications and 1 pending room invite." />
-            </children>
-        </VBox>
-
-        <HBox spacing="30.0" VBox.vgrow="ALWAYS">
-            <children>
-                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                <!-- Sol: Hoşgeldin Mesajı -->
+                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
                     <children>
-                        <Label styleClass="section-title" text="Quick Actions" />
-                        <GridPane hgap="20.0" vgap="20.0" VBox.vgrow="ALWAYS">
+                        <Label fx:id="welcomeLabel" styleClass="welcome-title-modern" text="Welcome back, User!" />
+                        <Label styleClass="welcome-subtitle-modern" text="Ready for your next secure meeting?" />
+                    </children>
+                </VBox>
+
+                <!-- Sağ: Profil Bölümü (Sadeleştirilmiş) -->
+                <HBox spacing="16.0" alignment="CENTER_RIGHT">
+                    <children>
+                        <!-- Profil Resmi (Büyütülmüş) -->
+                        <StackPane styleClass="profile-avatar-large">
+                            <children>
+                                <Circle radius="32.0" styleClass="profile-circle-large" />
+                                <Label fx:id="profileInitials" text="U" styleClass="profile-initials-large" />
+                            </children>
+                        </StackPane>
+
+                        <!-- Profil Bilgileri -->
+                        <VBox alignment="CENTER_LEFT" spacing="2.0">
+                            <children>
+                                <Label fx:id="profileNameLabel" text="User" styleClass="profile-name-large" />
+                                <Label text="Admin" styleClass="profile-role-large" />
+                            </children>
+                        </VBox>
+                    </children>
+                </HBox>
+            </children>
+        </HBox>
+
+        <!-- Ana İçerik: Quick Actions + Upcoming Events -->
+        <HBox spacing="32.0" VBox.vgrow="ALWAYS" alignment="TOP_LEFT">
+            <padding>
+                <Insets top="32.0" right="1.0" bottom="32.0" left="1.0" />
+            </padding>
+            <children>
+                <!-- Sol: Quick Actions -->
+                <VBox spacing="24.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+                    <children>
+                        <!-- Quick Actions Başlık -->
+                        <Label styleClass="section-title-modern" text="Quick Actions" />
+
+                        <!-- Action Kartları - Grid -->
+                        <GridPane hgap="20.0" vgap="20.0" VBox.vgrow="ALWAYS" styleClass="action-cards-grid-expanded" HBox.hgrow="ALWAYS">
                             <columnConstraints>
-                                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" percentWidth="50.0" />
-                                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" percentWidth="50.0" />
+                                <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                                <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
                             </columnConstraints>
                             <rowConstraints>
-                                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                                <RowConstraints vgrow="ALWAYS" />
+                                <RowConstraints vgrow="ALWAYS" />
                             </rowConstraints>
                             <children>
-                                <VBox fx:id="newMeetingCard" styleClass="action-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                <VBox fx:id="newMeetingCard" styleClass="action-card-modern-expanded, action-card-blue" GridPane.columnIndex="0" GridPane.rowIndex="0">
                                     <children>
-                                        <FontIcon iconLiteral="fas-plus-circle" styleClass="action-card-icon" />
-                                        <Label styleClass="action-card-title" text="New Meeting" />
-                                        <Label styleClass="action-card-description" text="Instant Secure Room" />
+                                        <StackPane styleClass="action-icon-wrapper-blue-small">
+                                            <children>
+                                                <FontIcon iconLiteral="fas-plus-circle" styleClass="action-card-icon-small" />
+                                            </children>
+                                        </StackPane>
+                                        <Label styleClass="action-card-title-small" text="New Meeting" />
+                                        <Label styleClass="action-card-description-small" text="Create secure room" />
+                                        <Region VBox.vgrow="ALWAYS" />
+                                        <FontIcon iconLiteral="fas-arrow-right" styleClass="action-arrow-small" />
                                     </children>
                                 </VBox>
-                                <VBox fx:id="joinRoomCard" styleClass="action-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+
+                                <VBox fx:id="joinRoomCard" styleClass="action-card-modern-expanded, action-card-green" GridPane.columnIndex="1" GridPane.rowIndex="0">
                                     <children>
-                                        <FontIcon iconLiteral="fas-arrow-right" styleClass="action-card-icon" />
-                                        <Label styleClass="action-card-title" text="Join Meeting" />
-                                        <Label styleClass="action-card-description" text="Connect to Tunnel" />
+                                        <StackPane styleClass="action-icon-wrapper-green-small">
+                                            <children>
+                                                <FontIcon iconLiteral="fas-sign-in-alt" styleClass="action-card-icon-small" />
+                                            </children>
+                                        </StackPane>
+                                        <Label styleClass="action-card-title-small" text="Join Meeting" />
+                                        <Label styleClass="action-card-description-small" text="Connect to room" />
+                                        <Region VBox.vgrow="ALWAYS" />
+                                        <FontIcon iconLiteral="fas-arrow-right" styleClass="action-arrow-small" />
                                     </children>
                                 </VBox>
-                                <VBox fx:id="scheduleRoomCard" styleClass="action-card" GridPane.columnIndex="0" GridPane.rowIndex="1">
+
+                                <VBox fx:id="scheduleRoomCard" styleClass="action-card-modern-expanded, action-card-orange" GridPane.columnIndex="0" GridPane.rowIndex="1">
                                     <children>
-                                        <FontIcon iconLiteral="far-clock" styleClass="action-card-icon" />
-                                        <Label styleClass="action-card-title" text="Schedule Room" />
-                                        <Label styleClass="action-card-description" text="Programmatic Sync" />
+                                        <StackPane styleClass="action-icon-wrapper-orange-small">
+                                            <children>
+                                                <FontIcon iconLiteral="far-clock" styleClass="action-card-icon-small" />
+                                            </children>
+                                        </StackPane>
+                                        <Label styleClass="action-card-title-small" text="Schedule" />
+                                        <Label styleClass="action-card-description-small" text="Plan for later" />
+                                        <Region VBox.vgrow="ALWAYS" />
+                                        <FontIcon iconLiteral="fas-arrow-right" styleClass="action-arrow-small" />
                                     </children>
                                 </VBox>
-                                <VBox fx:id="encryptedFilesCard" styleClass="action-card" GridPane.columnIndex="1" GridPane.rowIndex="1">
+
+                                <VBox fx:id="encryptedFilesCard" styleClass="action-card-modern-expanded, action-card-purple" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                     <children>
-                                        <FontIcon iconLiteral="fas-shield-alt" styleClass="action-card-icon" />
-                                        <Label styleClass="action-card-title" text="Encrypted Files" />
-                                        <Label styleClass="action-card-description" text="File Vault" />
+                                        <StackPane styleClass="action-icon-wrapper-purple-small">
+                                            <children>
+                                                <FontIcon iconLiteral="fas-shield-alt" styleClass="action-card-icon-small" />
+                                            </children>
+                                        </StackPane>
+                                        <Label styleClass="action-card-title-small" text="Secure Files" />
+                                        <Label styleClass="action-card-description-small" text="Access vault" />
+                                        <Region VBox.vgrow="ALWAYS" />
+                                        <FontIcon iconLiteral="fas-arrow-right" styleClass="action-arrow-small" />
                                     </children>
                                 </VBox>
                             </children>
@@ -70,10 +136,31 @@
                     </children>
                 </VBox>
 
-                <VBox spacing="10.0">
+                <!-- Sağ: Upcoming Events -->
+                <VBox spacing="8.0" styleClass="events-section-aligned" minWidth="380.0" maxWidth="450.0" VBox.vgrow="ALWAYS">
                     <children>
-                        <Label styleClass="section-title" text="Recent Activity" />
-                        <ListView fx:id="activityListView" styleClass="activity-list" />
+                        <!-- Başlık ve Tarih -->
+                        <VBox spacing="8.0">
+                            <children>
+                                <Label styleClass="section-title-modern" text="Upcoming Events" />
+                                <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                    <children>
+                                        <FontIcon iconLiteral="fas-calendar-alt" styleClass="date-icon" />
+                                        <Label fx:id="currentDateLabel" text="November 22, 2025" styleClass="current-date-label" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+
+                        <!-- Events List veya No Events Message -->
+                        <ScrollPane fx:id="eventsScrollPane" styleClass="events-scroll-pane" fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS" >
+                            <content>
+                                <VBox fx:id="eventsContainer" styleClass="no-events-card" alignment="CENTER" VBox.vgrow="ALWAYS" spacing="8.0">
+                                    <!-- Event kartları buraya dinamik olarak eklenecek -->
+                                    <!-- Eğer event yoksa no-events-card gösterilecek -->
+                                </VBox>
+                            </content>
+                        </ScrollPane>
                     </children>
                 </VBox>
             </children>

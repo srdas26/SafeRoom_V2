@@ -413,24 +413,563 @@
 }
 
 /* =================================================================
-   4. DASHBOARD
+   MODERN DASHBOARD STYLES - WITH UPCOMING EVENTS
+   Saferoom Dashboard için özel CSS stilleri
    ================================================================= */
-.welcome-banner {
-  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%, rgba(15, 23, 42, 1.0) 0%, rgba(30, 43, 59, 0.95) 100%);
+
+/* =================================================================
+   1. ÜST BAR (TOP BAR)
+   ================================================================= */
+
+.top-bar-modern {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 1.0) 0%,
+  rgba(30, 43, 59, 0.95) 100%);
   -fx-background-radius: 20px;
   -fx-padding: 32px;
   -fx-border-color: #334155;
   -fx-border-radius: 20px;
 }
+
+.welcome-title-modern {
+  -fx-font-size: 28px;
+  -fx-font-family: "Segoe UI", "System", sans-serif;
+  -fx-font-weight: bold;
+  -fx-text-fill: #e8eef7;
+}
+
+.welcome-subtitle-modern {
+  -fx-font-size: 14px;
+  -fx-text-fill: #94a3b8;
+}
+
+/* =================================================================
+   2. PROFİL BÖLÜMÜ (YENİ TASARIM - BÜYÜK)
+   ================================================================= */
+
+.profile-avatar-large {
+  -fx-pref-width: 64px;
+  -fx-pref-height: 64px;
+}
+
+.profile-circle-large {
+  -fx-fill: #3b82f6;
+  -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.5), 12, 0, 0, 0);
+}
+
+.profile-initials-large {
+  -fx-font-size: 24px;
+  -fx-font-weight: bold;
+  -fx-text-fill: white;
+}
+
+.profile-name-large {
+  -fx-font-size: 16px;
+  -fx-font-weight: 600;
+  -fx-text-fill: white;
+}
+
+.profile-role-large {
+  -fx-font-size: 13px;
+  -fx-text-fill: #94a3b8;
+}
+
+/* =================================================================
+   MODERN DASHBOARD STYLES - WITH UPCOMING EVENTS
+   Saferoom Dashboard için özel CSS stilleri
+   ================================================================= */
+
+/* =================================================================
+   1. ÜST BAR (TOP BAR)
+   ================================================================= */
+
+.top-bar-modern {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 1.0) 0%,
+  rgba(30, 43, 59, 0.95) 100%);
+  -fx-background-radius: 20px;
+  -fx-padding: 32px;
+  -fx-border-color: #334155;
+  -fx-border-radius: 20px;
+}
+
+.welcome-title-modern {
+  -fx-font-size: 28px;
+  -fx-font-family: "Segoe UI", "System", sans-serif;
+  -fx-font-weight: bold;
+  -fx-text-fill: #e8eef7;
+}
+
+.welcome-subtitle-modern {
+  -fx-font-size: 14px;
+  -fx-text-fill: #94a3b8;
+}
+
+/* =================================================================
+   2. PROFİL BÖLÜMÜ (YENİ TASARIM - BÜYÜK)
+   ================================================================= */
+
+.profile-avatar-large {
+  -fx-pref-width: 64px;
+  -fx-pref-height: 64px;
+}
+
+.profile-circle-large {
+  -fx-fill: #3b82f6;
+  -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.5), 12, 0, 0, 0);
+}
+
+.profile-initials-large {
+  -fx-font-size: 24px;
+  -fx-font-weight: bold;
+  -fx-text-fill: white;
+}
+
+.profile-name-large {
+  -fx-font-size: 16px;
+  -fx-font-weight: 600;
+  -fx-text-fill: white;
+}
+
+.profile-role-large {
+  -fx-font-size: 13px;
+  -fx-text-fill: #94a3b8;
+}
+
+
+/* =================================================================
+   4. SECTION TITLE
+   ================================================================= */
+
+.section-title-modern {
+  -fx-font-size: 22px;
+  -fx-font-weight: bold;
+  -fx-text-fill: #e8eef7;
+}
+
+/* =================================================================
+   5. ACTION CARDS - GENİŞLETİLMİŞ GRID VERSİYON
+   ================================================================= */
+
+.action-cards-grid-expanded {
+  /* Grid yatay olarak maksimum genişleyecek */
+}
+
+.action-card-modern-expanded {
+  -fx-background-radius: 16px;
+  -fx-padding: 20px;
+  -fx-border-width: 1px;
+  -fx-border-radius: 16px;
+  -fx-spacing: 10px;
+  -fx-cursor: hand;
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 10, 0, 0, 3);
+}
+
+.action-card-blue {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 0.95) 0%,
+  rgba(30, 58, 138, 0.2) 100%);
+  -fx-border-color: rgba(59, 130, 246, 0.3);
+}
+
+.action-card-green {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 0.95) 0%,
+  rgba(5, 122, 85, 0.2) 100%);
+  -fx-border-color: rgba(16, 185, 129, 0.3);
+}
+
+.action-card-orange {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 0.95) 0%,
+  rgba(180, 83, 9, 0.2) 100%);
+  -fx-border-color: rgba(245, 158, 11, 0.3);
+}
+
+.action-card-purple {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 0.95) 0%,
+  rgba(109, 40, 217, 0.2) 100%);
+  -fx-border-color: rgba(139, 92, 246, 0.3);
+}
+
+.action-card-modern-expanded:hover {
+  -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.4), 18, 0, 0, 0);
+}
+
+.action-card-blue:hover {
+  -fx-border-color: rgba(59, 130, 246, 0.7);
+}
+
+.action-card-green:hover {
+  -fx-border-color: rgba(16, 185, 129, 0.7);
+}
+
+.action-card-orange:hover {
+  -fx-border-color: rgba(245, 158, 11, 0.7);
+}
+
+.action-card-purple:hover {
+  -fx-border-color: rgba(139, 92, 246, 0.7);
+}
+
+/* Icon Wrappers */
+.action-icon-wrapper-blue-small,
+.action-icon-wrapper-green-small,
+.action-icon-wrapper-orange-small,
+.action-icon-wrapper-purple-small {
+  -fx-pref-width: 44px;
+  -fx-pref-height: 44px;
+  -fx-background-radius: 12px;
+}
+
+.action-icon-wrapper-blue-small {
+  -fx-background-color: rgba(59, 130, 246, 0.2);
+}
+
+.action-icon-wrapper-green-small {
+  -fx-background-color: rgba(16, 185, 129, 0.2);
+}
+
+.action-icon-wrapper-orange-small {
+  -fx-background-color: rgba(245, 158, 11, 0.2);
+}
+
+.action-icon-wrapper-purple-small {
+  -fx-background-color: rgba(139, 92, 246, 0.2);
+}
+
+.action-card-icon-small {
+  -fx-icon-size: 22px;
+  -fx-icon-color: white;
+}
+
+.action-card-title-small {
+  -fx-font-size: 17px;
+  -fx-font-weight: bold;
+  -fx-text-fill: white;
+  -fx-padding: 6 0 0 0;
+}
+
+.action-card-description-small {
+  -fx-font-size: 13px;
+  -fx-text-fill: #94a3b8;
+}
+
+.action-arrow-small {
+  -fx-icon-size: 16px;
+  -fx-icon-color: #64748b;
+}
+
+/* =================================================================
+   6. UPCOMING EVENTS SECTION - HİZALANMIŞ
+   ================================================================= */
+
+.events-section-aligned {
+  -fx-background-color: transparent;
+
+}
+
+/* Tarih Göstergesi */
+.date-icon {
+  -fx-icon-size: 16px;
+  -fx-icon-color: #94a3b8;
+}
+
+.current-date-label {
+  -fx-font-size: 14px;
+  -fx-text-fill: #94a3b8;
+  -fx-font-weight: 500;
+}
+
+/* Events Scroll Pane */
+.events-scroll-pane {
+  -fx-background-color: #0F1E35E5;
+  -fx-border-color: transparent;
+  -fx-border-radius: 16px;
+  -fx-background-radius: 16px;
+  -fx-fit-to-height: true;
+}
+
+.events-scroll-pane .viewport {
+  -fx-background-color: transparent;
+  -fx-background-radius: 16px;
+}
+
+.events-scroll-pane .scroll-bar:vertical {
+  -fx-background-color: transparent;
+  -fx-pref-width: 8px;
+}
+
+.events-scroll-pane .scroll-bar:vertical .track {
+  -fx-background-color: rgba(51, 65, 85, 0.3);
+  -fx-background-radius: 16px;
+}
+
+.events-scroll-pane .scroll-bar:vertical .thumb {
+  -fx-background-color: rgba(100, 116, 139, 0.5);
+  -fx-background-radius: 16px;
+}
+
+.events-scroll-pane .scroll-bar:vertical .thumb:hover {
+  -fx-background-color: rgba(100, 116, 139, 0.7);
+}
+
+/* Events Container - Ana Container */
+.events-container-main {
+  -fx-padding: 8 8 8 8;
+  -fx-background-color: transparent;
+  -fx-background-radius: 16px;
+  -fx-border-radius: 16px;
+}
+
+/* =================================================================
+   7. EVENT CARD
+   ================================================================= */
+
+.event-card {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(26, 41, 66, 0.8) 0%,
+  rgba(15, 30, 53, 0.9) 100%);
+  -fx-background-radius: 14px;
+  -fx-padding: 16px;
+  -fx-border-color: #334155;
+  -fx-border-width: 1px;
+  -fx-border-radius: 14px;
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0, 0, 2);
+  -fx-cursor: hand;
+}
+
+.event-card:hover {
+  -fx-border-color: #475569;
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 12, 0, 0, 3);
+}
+
+/* Event Icon */
+.event-icon {
+  -fx-icon-size: 20px;
+}
+
+.event-icon-meeting {
+  -fx-icon-color: #3b82f6;
+}
+
+.event-icon-scheduled {
+  -fx-icon-color: #f59e0b;
+}
+
+.event-icon-file {
+  -fx-icon-color: #8b5cf6;
+}
+
+/* Event Title */
+.event-title {
+  -fx-font-size: 15px;
+  -fx-font-weight: 600;
+  -fx-text-fill: #e8eef7;
+}
+
+/* Event Time */
+.event-time-icon {
+  -fx-icon-size: 12px;
+  -fx-icon-color: #94a3b8;
+}
+
+.event-time {
+  -fx-font-size: 12px;
+  -fx-text-fill: #94a3b8;
+  -fx-font-weight: 500;
+}
+
+/* Event Description */
+.event-description {
+  -fx-font-size: 13px;
+  -fx-text-fill: #cbd5e1;
+}
+
+/* =================================================================
+   8. NO EVENTS CARD - RESPONSİVE DÜZELTME
+   ================================================================= */
+
+.no-events-card {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(26, 41, 66, 0.5) 0%,
+  rgba(15, 30, 53, 0.6) 100%);
+  -fx-background-radius: 16px;
+  -fx-padding: 60px 20px;
+  -fx-border-color: #334155;
+  -fx-border-width: 1px;
+  -fx-border-radius: 16px;
+  -fx-border-style: dashed;
+  -fx-alignment: center;
+  -fx-spacing: 12px;
+  -fx-pref-height: 100%;
+  -fx-min-height: 100%;
+}
+
+.no-events-icon {
+  -fx-icon-size: 48px;
+  -fx-icon-color: #64748b;
+}
+
+.no-events-title {
+  -fx-font-size: 18px;
+  -fx-font-weight: 600;
+  -fx-text-fill: #94a3b8;
+}
+
+.no-events-subtitle {
+  -fx-font-size: 14px;
+  -fx-text-fill: #64748b;
+}
+
+/* =================================================================
+   9. DIALOG STYLING
+   ================================================================= */
+
+.dialog-pane {
+  -fx-background-color: #1a2942;
+}
+
+.dialog-pane .label {
+  -fx-text-fill: #e8eef7;
+  -fx-font-size: 14px;
+}
+
+.dialog-pane .text-field {
+  -fx-background-color: rgba(15, 23, 42, 0.8);
+  -fx-text-fill: white;
+  -fx-prompt-text-fill: #64748b;
+  -fx-border-color: #334155;
+  -fx-border-radius: 8px;
+  -fx-background-radius: 8px;
+  -fx-padding: 8 12;
+  -fx-font-size: 14px;
+}
+
+.dialog-pane .text-field:focused {
+  -fx-border-color: #3b82f6;
+  -fx-background-color: rgba(15, 23, 42, 0.9);
+}
+
+.dialog-pane .button {
+  -fx-background-color: #3b82f6;
+  -fx-text-fill: white;
+  -fx-background-radius: 8px;
+  -fx-cursor: hand;
+  -fx-padding: 8 16;
+  -fx-font-size: 14px;
+  -fx-font-weight: 600;
+}
+
+.dialog-pane .button:hover {
+  -fx-background-color: #2563eb;
+}
+
+/* =================================================================
+   10. RESPONSIVE DESIGN
+   ================================================================= */
+
+@media screen and (max-width: 1400px) {
+  .events-section-aligned {
+    -fx-min-width: 360px;
+    -fx-max-width: 420px;
+  }
+}
+
+@media screen and (max-width: 1200px) {
+  .action-card-modern-expanded {
+    -fx-padding: 10 0 0 0;
+  }
+
+  .action-card-title-small {
+    -fx-font-size: 16px;
+  }
+
+  .action-card-description-small {
+    -fx-font-size: 12px;
+  }
+
+  .events-section-aligned {
+    -fx-min-width: 340px;
+    -fx-max-width: 380px;
+  }
+
+  .event-card {
+    -fx-padding: 14px;
+  }
+
+  .event-title {
+    -fx-font-size: 14px;
+  }
+}
+
+@media screen and (max-width: 1000px) {
+  .welcome-title-modern {
+    -fx-font-size: 24px;
+  }
+
+  .section-title-modern {
+    -fx-font-size: 20px;
+  }
+
+  .action-card-modern-expanded {
+    -fx-padding: 16px;
+  }
+
+  .action-icon-wrapper-blue-small,
+  .action-icon-wrapper-green-small,
+  .action-icon-wrapper-orange-small,
+  .action-icon-wrapper-purple-small {
+    -fx-pref-width: 40px;
+    -fx-pref-height: 40px;
+  }
+
+  .action-card-icon-small {
+    -fx-icon-size: 20px;
+  }
+}
+
+@media screen and (max-width: 800px) {
+  /* Events section'ı gizle */
+  .events-section-aligned {
+    -fx-min-width: 0;
+    -fx-pref-width: 0;
+    -fx-max-width: 0;
+    -fx-visible: false;
+  }
+}
+
+/* =================================================================
+   11. GENEL STİLLER
+   ================================================================= */
+
+.page-container {
+  -fx-background-color: rgba(30, 43, 59, 0.95);
+}
+
+/* Eski stiller (geriye dönük uyumluluk) */
+.welcome-banner {
+  -fx-background-color: linear-gradient(from 0% 0% to 100% 100%,
+  rgba(15, 23, 42, 1.0) 0%,
+  rgba(30, 43, 59, 0.95) 100%);
+  -fx-background-radius: 20px;
+  -fx-padding: 32px;
+  -fx-border-color: #334155;
+  -fx-border-radius: 20px;
+}
+
 .welcome-title {
   -fx-font-size: 28px;
   -fx-font-family: "System Bold";
   -fx-text-fill: white;
 }
+
 .welcome-subtitle {
   -fx-font-size: 14px;
   -fx-text-fill: #94a3b8;
 }
+
 .action-card {
   -fx-background-color: #0f172a;
   -fx-background-radius: 16px;
@@ -441,23 +980,28 @@
   -fx-cursor: hand;
   -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 4);
 }
+
 .action-card:hover {
   -fx-border-color: #22d3ee;
   -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.2), 20, 0, 0, 0);
 }
+
 .action-card-icon {
   -fx-icon-color: #22d3ee;
   -fx-icon-size: 24px;
 }
+
 .action-card-title {
   -fx-font-size: 18px;
   -fx-font-weight: bold;
   -fx-text-fill: white;
 }
+
 .action-card-description {
   -fx-font-size: 14px;
   -fx-text-fill: #94a3b8;
 }
+
 .activity-list {
   -fx-background-color: #0f172a;
   -fx-background-radius: 16px;
@@ -466,16 +1010,76 @@
   -fx-padding: 8px;
   -fx-min-width: 300px;
 }
+
 .activity-list .list-cell {
   -fx-background-color: transparent;
   -fx-text-fill: #cbd5e1;
   -fx-padding: 12px;
   -fx-background-radius: 8px;
 }
+
 .activity-list .list-cell:filled:hover {
   -fx-background-color: #1e2b3b;
 }
 
+/* ESKİ STILLER - Geriye Dönük Uyumluluk İçin */
+.events-section {
+  -fx-background-color: transparent;
+}
+
+.events-container {
+  -fx-padding: 8 8 8 8;
+  -fx-background-color: transparent;
+  -fx-background-radius: 14px;
+  -fx-border-radius: 14px;
+}
+
+.action-cards-grid {
+  -fx-max-width: 600px;
+}
+
+.action-cards-vertical {
+  -fx-max-width: 600px;
+}
+
+.action-card-modern-small {
+  -fx-background-radius: 16px;
+  -fx-padding: 20px;
+  -fx-border-width: 1px;
+  -fx-border-radius: 16px;
+  -fx-spacing: 10px;
+  -fx-cursor: hand;
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 10, 0, 0, 3);
+  -fx-min-height: 140px;
+  -fx-max-width: 280px;
+}
+
+.action-card-modern-vertical {
+  -fx-background-radius: 16px;
+  -fx-padding: 20px 24px;
+  -fx-border-width: 1px;
+  -fx-border-radius: 16px;
+  -fx-cursor: hand;
+  -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 10, 0, 0, 3);
+  -fx-min-height: 80px;
+  -fx-pref-height: 80px;
+}
+
+.action-card-title-vertical {
+  -fx-font-size: 18px;
+  -fx-font-weight: bold;
+  -fx-text-fill: white;
+}
+
+.action-card-description-vertical {
+  -fx-font-size: 13px;
+  -fx-text-fill: #94a3b8;
+}
+
+.action-arrow-vertical {
+  -fx-icon-size: 20px;
+  -fx-icon-color: #64748b;
+}
 /* =================================================================
    5. MESSAGES
    ================================================================= */
@@ -877,43 +1481,43 @@
 
 /* 1. İKON RENGİNİN BEYAZ OLMASINI ZORLA */
 /* İkonu ezilmeyen en yüksek öncelikle hedefliyoruz */
-.chat-context-menu .menu-item .font-icon { 
-    -fx-icon-color: white !important; 
-    -fx-icon-size: 18px;
+.chat-context-menu .menu-item .font-icon {
+  -fx-icon-color: white !important;
+  -fx-icon-size: 18px;
 }
 
 /* 2. HAREKET VE TİTREMEYİ SIFIRLA */
 .chat-context-menu .menu-item {
-    /* Genel item'lara sıfırlama uyguluyoruz */
-    -fx-scale-x: 1.0 !important;
-    -fx-scale-y: 1.0 !important;
-    -fx-translate-y: 0 !important;
-    
-    /* Çerçeve ve Arkaplanı düzenle */
-    -fx-background-color: transparent;
-    -fx-padding: 10px 12px !important;
-    -fx-background-radius: 8px;
+  /* Genel item'lara sıfırlama uyguluyoruz */
+  -fx-scale-x: 1.0 !important;
+  -fx-scale-y: 1.0 !important;
+  -fx-translate-y: 0 !important;
+
+  /* Çerçeve ve Arkaplanı düzenle */
+  -fx-background-color: transparent;
+  -fx-padding: 10px 12px !important;
+  -fx-background-radius: 8px;
 }
 
 /* 3. HOVER/FOCUSED STİLİ (Titremesiz Vurgu) */
 .chat-context-menu .menu-item:focused {
-    /* Vurgu Rengi: Kontrastı yüksek, temiz bir mavi kullanıyoruz */
-    -fx-background-color: #4A3B70 !important; 
-    
-    /* Vurgu anında bile boyutta/konumda değişiklik olmasın diye tekrar sıfırlıyoruz */
-    -fx-scale-x: 1.0 !important;
-    -fx-translate-x: 0 !important;
-    -fx-effect: none !important;
-    
-    /* Yazı ve İkonlar Beyaz Kalmalı */
-    -fx-text-fill: white !important;
-    -fx-icon-color: white !important;
+  /* Vurgu Rengi: Kontrastı yüksek, temiz bir mavi kullanıyoruz */
+  -fx-background-color: #4A3B70 !important;
+
+  /* Vurgu anında bile boyutta/konumda değişiklik olmasın diye tekrar sıfırlıyoruz */
+  -fx-scale-x: 1.0 !important;
+  -fx-translate-x: 0 !important;
+  -fx-effect: none !important;
+
+  /* Yazı ve İkonlar Beyaz Kalmalı */
+  -fx-text-fill: white !important;
+  -fx-icon-color: white !important;
 }
 
 /* 4. YAZI RENGİ (Normal Durum) */
 .chat-context-menu .menu-item .label {
-    -fx-text-fill: #e2e8f0 !important; 
-    -fx-font-weight: 600;
+  -fx-text-fill: #e2e8f0 !important;
+  -fx-font-weight: 600;
 }
 
 
