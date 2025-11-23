@@ -129,7 +129,7 @@ public class HybridCongestionController {
 				congestionWindow += ackedBytes;
 				if (congestionWindow >= slowStartThreshold) {
 					state = CongestionState.CONGESTION_AVOIDANCE;
-					System.out.println("🔄 Switched to CONGESTION_AVOIDANCE");
+					System.out.println("Switched to CONGESTION_AVOIDANCE");
 				}
 			} else if (state == CongestionState.CONGESTION_AVOIDANCE) {
 				// Additive increase
@@ -174,7 +174,7 @@ public class HybridCongestionController {
             
             updatePacingRate();
             
-            System.out.printf("🔴 LOSS: %d packets, cwnd: %d -> %d bytes, bw: %.1f Mbps%n",
+            System.out.printf("LOSS: %d packets, cwnd: %d -> %d bytes, bw: %.1f Mbps%n",
                 lostPacketCount, 
                 slowStartThreshold * 2, 
                 congestionWindow,
@@ -207,7 +207,7 @@ public class HybridCongestionController {
         if (state == CongestionState.RECOVERY && 
             System.nanoTime() - lastNackTime > smoothedRtt * 2) {
             state = CongestionState.CONGESTION_AVOIDANCE;
-            System.out.println("🟢 Exited RECOVERY state");
+            System.out.println("Exited RECOVERY state");
         }
     }
     
@@ -272,7 +272,7 @@ public class HybridCongestionController {
         smoothedRtt = 2_000_000;                  // 2ms realistic LAN RTT
         packetIntervalNs = 20_000;                // 20μs mikro-pacing
         updatePacingRate();
-        System.out.println("⚡ LAN MODE: mikro-pacing (20μs), large cwnd (512 pkts)");
+        System.out.println("LAN MODE: mikro-pacing (20μs), large cwnd (512 pkts)");
     }
     
     public void enableWanMode() {
@@ -282,7 +282,7 @@ public class HybridCongestionController {
         congestionWindow = 32 * PACKET_SIZE;      // 32 packets start (was 16)
         estimatedBandwidthBps = 50_000_000;       // 50 Mbps estimate
         updatePacingRate();
-        System.out.println("📡 WAN MODE - Optimized settings for stability and performance");
+        System.out.println("WAN MODE - Optimized settings for stability and performance");
     }
     
     /**

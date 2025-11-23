@@ -191,23 +191,36 @@ public class EnhancedFileTransferSender {
 	    public void sendFileWithoutHandshake(Path filePath, long fileId) throws IOException{
 	    	sendFileInternal(filePath, fileId, false); // Skip handshake
 	    }
-	    
-	    private void sendFileInternal(Path filePath, long fileId, boolean doHandshake) throws IOException{
-	    	if(channel == null) throw new IllegalStateException("Datagram Channel is null you must bind and connect first");
-	    	if(stopRequested) throw new IllegalStateException("Transfer was stopped");
-	    	
-	    	try(FileChannel fc = FileChannel.open(filePath, StandardOpenOption.READ)){
-	    		long fileSize = fc.size();
-	    		
-	    		// Initialize ChunkManager for unlimited file size support
-	    		this.chunkManager = new ChunkManager(filePath, SLICE_SIZE);
-	    		int totalSeq = chunkManager.getTotalSequenceCount();
-	    		
-	    		// Thread-safe için her thread kendi instance'larını kullanacak
-	    		CRC32C initialCrc = new CRC32C();
-	    		CRC32C_Packet initialPkt = new CRC32C_Packet();
-	    		
-			if (doHandshake) {
+	      private void sendFileInternal(Path filePath, long fileId, boolean doHandshake) throws IOException{
+    	System.out.println("[SEND-INTERNAL] ╔════════════════════════════════════════════════");
+    	System.out.printf("[SEND-INTERNAL] ║ sendFileInternal() ENTERED%n");
+    	System.out.printf("[SEND-INTERNAL] ║ Thread: %s%n", Thread.currentThread().getName());
+    	System.out.printf("[SEND-INTERNAL] ║ filePath: %s%n", filePath.getFileName());
+    	System.out.printf("[SEND-INTERNAL] ║ fileId: %d%n", fileId);
+    	System.out.printf("[SEND-INTERNAL] ║ doHandshake: %s%n", doHandshake);
+    	System.out.println("[SEND-INTERNAL] ╚════════════════════════════════════════════════");
+    	
+    	if(channel == null) throw new IllegalStateException("Datagram Channel is null you must bind and connect first");
+    	if(stopRequested) throw new IllegalStateException("Transfer was stopped");
+    	
+    	try(FileChannel fc = FileChannel.open(filePath, StandardOpenOption.READ)){
+    		long fileSize = fc.size();
+    		
+    		System.out.printf("[SEND-INTERNAL] File opened: size=%d bytes%n", fileSize);
+    		
+    		// Initialize ChunkManager for unlimited file size support
+    		this.chunkManager = new ChunkManager(filePath, SLICE_SIZE);
+    		int totalSeq = chunkManager.getTotalSequenceCount();
+    		
+    		System.out.printf("[SEND-INTERNAL] ChunkManager initialized: %d chunks%n", totalSeq);
+    		
+    		// Thread-safe için her thread kendi instance'larını kullanacak
+    		CRC32C initialCrc = new CRC32C();
+    		CRC32C_Packet initialPkt = new CRC32C_Packet();
+    		
+		System.out.printf("[SEND-INTERNAL] ⚙️ doHandshake check: %s%n", doHandshake);
+		if (doHandshake) {
+			System.out.println("[SEND-INTERNAL] ✅ Handshake WILL BE PERFORMED");
 				long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
 				final long MAX_BACKOFF = 10_000_000L;
 				long backoff  = 1_000_000L;

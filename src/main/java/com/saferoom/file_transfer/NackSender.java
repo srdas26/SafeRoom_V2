@@ -161,7 +161,7 @@ public class NackSender implements Runnable{
 			if (chunkManager != null) {
 				// Large file mode: use ChunkManager
 				try {
-					// 🔥 CRITICAL FIX: Do I/O operations OUTSIDE synchronized block to prevent deadlock!
+					// CRITICAL FIX: Do I/O operations OUTSIDE synchronized block to prevent deadlock!
 					int chunkIdx = chunkManager.findChunkForSequence(seqNo);
 					if (chunkIdx < 0) {
 						System.err.println("No chunk found for sequence: " + seqNo);
@@ -175,12 +175,12 @@ public class NackSender implements Runnable{
 					
 					// Bounds check BEFORE synchronized block
 					if(localOff + payloadLen > chunkBuffer.capacity()) {
-						System.err.println("⚠️  Chunk bounds exceeded: localOff=" + localOff + 
+						System.err.println("️Chunk bounds exceeded: localOff=" + localOff + 
 							", payloadLen=" + payloadLen + ", capacity=" + chunkBuffer.capacity() + 
 							", seqNo=" + seqNo);
 						// Adjust payload length to fit
 						payloadLen = chunkBuffer.capacity() - localOff;
-						System.out.println("✂️  Adjusted payloadLen to: " + payloadLen);
+						System.out.println("Adjusted payloadLen to: " + payloadLen);
 					}
 					
 					// Prepare buffer views OUTSIDE synchronized block
@@ -212,7 +212,7 @@ public class NackSender implements Runnable{
 				
 				// Adjust payload if it exceeds buffer
 				if(off + payloadLen > mem_buf.capacity()) {
-					System.out.println("⚠️  Adjusting payload: off=" + off + ", payloadLen=" + payloadLen + " → " + (mem_buf.capacity() - off));
+					System.out.println("Adjusting payload: off=" + off + ", payloadLen=" + payloadLen + " → " + (mem_buf.capacity() - off));
 					payloadLen = mem_buf.capacity() - off;
 				}
 				
@@ -305,7 +305,7 @@ public class NackSender implements Runnable{
 					LockSupport.parkNanos(backoffNs);
 					retries++;
 					if(retries >= MAX_RETRIES) {
-						System.err.printf("⚠️  NACK frame send failed after %d retries (UDP buffer congested)%n", MAX_RETRIES);
+						System.err.printf("️NACK frame send failed after %d retries (UDP buffer congested)%n", MAX_RETRIES);
 						return;
 					}
 				}
@@ -313,7 +313,7 @@ public class NackSender implements Runnable{
 			
 			// Success log (only if there were retries)
 			if (retries > 0) {
-				System.out.printf("[NACK] ✅ NACK sent after %d retries%n", retries);
+				System.out.printf("[NACK]NACK sent after %d retries%n", retries);
 			}
 		}catch(IOException e){
 			System.err.println("NACK write failed: " + e.getMessage());
@@ -387,7 +387,7 @@ public class NackSender implements Runnable{
 			throw new IllegalStateException("You must bind the channel first");
 		}
 		
-		System.out.printf("[NACK-SENDER] 🚀 Starting receive loop for fileId=%d%n", fileId);
+		System.out.printf("[NACK-SENDER] Starting receive loop for fileId=%d%n", fileId);
 		
 		try {
 			startNackLoop();
@@ -403,7 +403,7 @@ public class NackSender implements Runnable{
 					
 					// Debug: Log first few packets
 					if (x > 0 && packetCount < 5) {
-						System.out.printf("[NACK-SENDER] 📥 Packet received: %d bytes (count: %d)%n", x, packetCount);
+						System.out.printf("[NACK-SENDER] Packet received: %d bytes (count: %d)%n", x, packetCount);
 						packetCount++;
 					}
 					}catch(java.net.PortUnreachableException e){

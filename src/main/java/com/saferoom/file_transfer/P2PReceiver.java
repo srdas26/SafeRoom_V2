@@ -37,12 +37,12 @@ public class P2PReceiver {
         try {
             bindPort = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
-            System.err.println("❌ Hata: Port numarası geçersiz: " + args[1]);
+            System.err.println("Hata: Port numarası geçersiz: " + args[1]);
             return;
         }
         
         if (bindPort < 1 || bindPort > 65535) {
-            System.err.println("❌ Hata: Port numarası 1-65535 arasında olmalı: " + bindPort);
+            System.err.println("Hata: Port numarası 1-65535 arasında olmalı: " + bindPort);
             return;
         }
         
@@ -50,10 +50,10 @@ public class P2PReceiver {
         
         try {
             System.out.println("=== P2P File Transfer Receiver ===");
-            System.out.println("🔵 Receiver başlatılıyor...");
-            System.out.println("🔵 Bind IP: " + bindIp);
-            System.out.println("🔵 Bind Port: " + bindPort);
-            System.out.println("🔵 Output File: " + outputFile);
+            System.out.println("Receiver başlatılıyor...");
+            System.out.println("Bind IP: " + bindIp);
+            System.out.println("Bind Port: " + bindPort);
+            System.out.println("Output File: " + outputFile);
             System.out.println("");
             
             // Channel setup with optimized buffers
@@ -66,9 +66,9 @@ public class P2PReceiver {
             InetSocketAddress bindAddress = new InetSocketAddress(bindIp, bindPort);
             receiverChannel.bind(bindAddress);
             
-            System.out.println("✅ Socket başarıyla bind edildi: " + bindAddress);
-            System.out.println("🔵 Sender'dan bağlantı bekleniyor...");
-            System.out.println("🔵 Handshake için maksimum 60 saniye beklenecek...");
+            System.out.println("Socket başarıyla bind edildi: " + bindAddress);
+            System.out.println("Sender'dan bağlantı bekleniyor...");
+            System.out.println("Handshake için maksimum 60 saniye beklenecek...");
             System.out.println("");
             
             // FileTransferReceiver kullan
@@ -90,32 +90,32 @@ public class P2PReceiver {
                 
                 System.out.println("");
                 System.out.println("=== Transfer Tamamlandı ===");
-                System.out.println("✅ Dosya başarıyla alındı: " + receivedFile.toAbsolutePath());
-                System.out.println("📁 Dosya boyutu: " + fileSize + " bytes (" + String.format("%.2f", fileSizeMB) + " MB)");
-                System.out.println("⏱️  Transfer süresi: " + String.format("%.2f", transferTime) + " saniye");
-                System.out.println("🚀 Transfer hızı: " + String.format("%.2f", throughputMBps) + " MB/s");
+                System.out.println("Dosya başarıyla alındı: " + receivedFile.toAbsolutePath());
+                System.out.println("Dosya boyutu: " + fileSize + " bytes (" + String.format("%.2f", fileSizeMB) + " MB)");
+                System.out.println("Transfer süresi: " + String.format("%.2f", transferTime) + " saniye");
+                System.out.println("Transfer hızı: " + String.format("%.2f", throughputMBps) + " MB/s");
             } else {
-                System.err.println("❌ Transfer başarısız: Dosya oluşturulamadı");
+                System.err.println("Transfer başarısız: Dosya oluşturulamadı");
             }
             
         } catch (IOException e) {
-            System.err.println("❌ IO Hatası: " + e.getMessage());
+            System.err.println(" IO Hatası: " + e.getMessage());
             e.printStackTrace();
         } catch (Exception e) {
-            System.err.println("❌ Beklenmeyen hata: " + e.getMessage());
+            System.err.println(" Beklenmeyen hata: " + e.getMessage());
             e.printStackTrace();
         } finally {
             // Cleanup
             if (receiverChannel != null && receiverChannel.isOpen()) {
                 try {
                     receiverChannel.close();
-                    System.out.println("🔵 Receiver kapatıldı");
+                    System.out.println("Receiver kapatıldı");
                 } catch (IOException e) {
-                    System.err.println("⚠️  Channel kapatma hatası: " + e.getMessage());
+                    System.err.println("️Channel kapatma hatası: " + e.getMessage());
                 }
             }
             
-            System.out.println("🔵 P2P Receiver sona erdi");
+            System.out.println("P2P Receiver sona erdi");
         }
     }
 }

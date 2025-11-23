@@ -75,16 +75,16 @@ public class EnhancedNackListener implements Runnable{
 					int receivedFileId = ctrl.getInt();
 					
 					if(magic == 0xDEADBEEF && receivedFileId == (int)fileId) {
-						System.out.println("🎉 Transfer completion signal received from receiver!");
+						System.out.println("Transfer completion signal received from receiver!");
 						if(onTransferComplete != null) {
 							try {
 								onTransferComplete.run();
 							} catch(Exception e) {
-								System.err.println("❌ Error in completion callback: " + e.getMessage());
+								System.err.println("Error in completion callback: " + e.getMessage());
 								e.printStackTrace();
 							}
 						} else {
-							System.err.println("⚠️  onTransferComplete callback is null!");
+							System.err.println("onTransferComplete callback is null!");
 						}
 						break; // Exit listener loop
 					}
@@ -111,7 +111,7 @@ public class EnhancedNackListener implements Runnable{
 					continue;
 				}
 				
-				// RTT MEASUREMENT - NACK timestamp'ini al ve RTT hesapla! 🎯
+				// RTT MEASUREMENT - NACK timestamp'ini al ve RTT hesapla!
 				long nackSentTime = NackFrame.timestamp(ctrl);
 				long nackReceiveTime = System.nanoTime();
 				long rttNs = nackReceiveTime - nackSentTime;
