@@ -276,4 +276,12 @@ public class DataChannelWrapper extends DatagramChannel {
         send(merged, remoteAddress);
         return totalBytes;
     }
+
+    public long getBufferedAmountSafe() {
+        try {
+            return dataChannel.getBufferedAmount();
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
 }

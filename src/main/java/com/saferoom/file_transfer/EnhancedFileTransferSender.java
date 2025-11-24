@@ -16,6 +16,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32C;
 
+import com.saferoom.p2p.DataChannelWrapper;
+
 public class EnhancedFileTransferSender {
 	    private final DatagramChannel channel;
 	    private volatile boolean stopRequested = false;
@@ -170,11 +172,13 @@ public class EnhancedFileTransferSender {
 	        
 	        // Send packet
 			try{
+				final int packetBytes = CRC32C_Packet.HEADER_SIZE + take;
+				waitForDataChannelDrain(packetBytes);
 	        	channel.write(frame);
 	        	
 	        	// Notify congestion controller
 	        	if (hybridControl != null) {
-	        		hybridControl.onPacketSent(take + pkt.headerBuffer().remaining());
+	        		hybridControl.onPacketSent(packetBytes);
 	        	}
 			}catch(IOException e){
 				System.err.println("Frame sending error: " + e);
@@ -462,5 +466,18 @@ public class EnhancedFileTransferSender {
 	            threadPool.shutdownNow();
 	            Thread.currentThread().interrupt();
 	        }
+	    }
+	    
+	    private void waitForDataChannelDrain(int bytesToSend) throws IOException {
+	    	if (!(channel instanceof DataChannelWrapper wrapper)) {
+	    		return;
+	    	}
+	    	final long maxBuffered = Long.getLong("saferoom.transfer.buffer.maxBytes", 8L << 20);
+	    	while (wrapper.getBufferedAmountSafe() + bytesToSend > maxBuffered) {
+	    		if (!wrapper.isConnected()) {
+	    			throw new IOException("DataChannel closed");
+	    		}
+	    		LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(2));
+	    	}
 	    }
 	}
