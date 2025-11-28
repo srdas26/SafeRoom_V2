@@ -174,13 +174,7 @@ public class ActiveCallDialog {
         );
         shareScreenButton.setOnAction(e -> handleShareScreen());
         
-        // Initially disable until we verify screen capture capability
-        // This prevents native crashes on unsupported systems
-        shareScreenButton.setDisable(true);
-        shareScreenButton.setOpacity(0.5);
-        shareScreenButton.setTooltip(new javafx.scene.control.Tooltip("Checking screen capture availability..."));
-        
-        // Check screen capture capability in background thread
+        // Ensure screen share control is enabled across all platforms
         checkScreenCaptureCapability();
         
         // Screen share toggle button (initially hidden)
@@ -354,106 +348,11 @@ public class ActiveCallDialog {
      * Check: pipewire --version && xdg-desktop-portal --version
      */
     private void checkScreenCaptureCapability() {
-        System.out.println("[ActiveCallDialog] Checking screen capture capability...");
-        
-        // Detect OS
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        boolean isLinux = osName.contains("linux");
-        boolean isWindows = osName.contains("windows");
-        boolean isMac = osName.contains("mac");
-        
-        System.out.printf("[ActiveCallDialog] OS detected: %s (Linux=%b, Windows=%b, Mac=%b)%n", 
-            osName, isLinux, isWindows, isMac);
-        
-        // On Linux, check for PipeWire/Portal support first
-        if (isLinux) {
-            System.out.println("[ActiveCallDialog] Linux detected - checking PipeWire/Portal support...");
-            checkLinuxScreenCaptureSupport();
-            return;
-        }
-        
-        // On Windows/Mac, run capability test in background
-        Thread capabilityCheckThread = new Thread(() -> {
-            boolean isSupported = false;
-            String errorMessage = null;
-            
-            try {
-                // Try to enumerate screens (this is where native crash happens)
-                System.out.println("[ActiveCallDialog] Testing native screen enumeration...");
-                java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> testScreens = 
-                    callManager.getWebRTCClient().getAvailableScreens();
-                
-                // If we got here without crash, it's supported
-                isSupported = (testScreens != null && !testScreens.isEmpty());
-                
-                if (isSupported) {
-                    System.out.println("[ActiveCallDialog] ✅ Screen capture is SUPPORTED");
-                } else {
-                    System.out.println("[ActiveCallDialog] ⚠️ Screen capture returned empty list");
-                    errorMessage = "No screens found";
-                }
-                
-            } catch (Throwable t) {
-                System.err.println("[ActiveCallDialog] ❌ Screen capture is NOT SUPPORTED");
-                System.err.println("[ActiveCallDialog] Error: " + t.getMessage());
-                errorMessage = t.getMessage();
-                isSupported = false;
-            }
-            
-            // Update UI on JavaFX thread
-            final boolean finalSupported = isSupported;
-            final String finalError = errorMessage;
-            
-            javafx.application.Platform.runLater(() -> {
-                if (shareScreenButton != null) {
-                    shareScreenButton.setDisable(!finalSupported);
-                    shareScreenButton.setOpacity(finalSupported ? 1.0 : 0.5);
-                    
-                    String tooltip = finalSupported ? 
-                        "Share Screen" : 
-                        "Screen sharing not available" + (finalError != null ? ": " + finalError : "");
-                    
-                    shareScreenButton.setTooltip(new javafx.scene.control.Tooltip(tooltip));
-                    
-                    System.out.printf("[ActiveCallDialog] Screen share button: enabled=%b%n", finalSupported);
-                }
-            });
-        });
-        
-        capabilityCheckThread.setName("ScreenCaptureCapabilityCheck");
-        capabilityCheckThread.setDaemon(true);
-        capabilityCheckThread.start();
-    }
-    
-    /**
-     * Check Linux-specific screen capture support
-     * Tests for PipeWire and XDG Desktop Portal
-     * 
-     * CRITICAL: Native screen capture crashes on Linux even with PipeWire
-     * Disabling completely until proper XDG Portal integration
-     */
-    private void checkLinuxScreenCaptureSupport() {
-        System.out.println("[ActiveCallDialog] ⚠️ Linux screen capture disabled (native crash risk)");
-        System.out.println("[ActiveCallDialog] Reason: WebRTC native library crashes even with PipeWire");
-        System.out.println("[ActiveCallDialog] Recommendation: Wait for webrtc-java XDG Portal support");
-        
-        // Immediately disable without testing (testing causes crash!)
         javafx.application.Platform.runLater(() -> {
             if (shareScreenButton != null) {
-                shareScreenButton.setDisable(true);
-                shareScreenButton.setOpacity(0.5);
-                
-                String tooltip = "Screen sharing unavailable on Linux\n\n" +
-                        "Reason: Native library compatibility issue\n" +
-                        "The WebRTC library crashes when accessing screen capture APIs on Linux.\n\n" +
-                        "Workarounds:\n" +
-                        "• Use macOS or Windows for screen sharing\n" +
-                        "• Wait for webrtc-java library update with proper XDG Portal support\n\n" +
-                        "Technical: SIGSEGV in DesktopCapturer::GetSourceList()";
-                
-                shareScreenButton.setTooltip(new javafx.scene.control.Tooltip(tooltip));
-                
-                System.out.println("[ActiveCallDialog] ❌ Screen share button disabled on Linux");
+                shareScreenButton.setDisable(false);
+                shareScreenButton.setOpacity(1.0);
+                shareScreenButton.setTooltip(new javafx.scene.control.Tooltip("Share Screen"));
             }
         });
     }
