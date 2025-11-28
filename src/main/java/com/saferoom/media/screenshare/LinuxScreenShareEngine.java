@@ -303,7 +303,11 @@ public final class LinuxScreenShareEngine implements AutoCloseable {
             int stride = avFrame.linesize(planeIndex);
             BytePointer pointer = avFrame.data(planeIndex);
             if (pointer != null && stride > 0 && height > 0) {
-                ByteBuffer buffer = pointer.asByteBuffer();
+                long byteCount = (long) stride * height;
+                if (byteCount > Integer.MAX_VALUE) {
+                    byteCount = Integer.MAX_VALUE;
+                }
+                ByteBuffer buffer = pointer.limit(byteCount).position(0).asByteBuffer();
                 return new PlaneBuffer(buffer, stride);
             }
         }
