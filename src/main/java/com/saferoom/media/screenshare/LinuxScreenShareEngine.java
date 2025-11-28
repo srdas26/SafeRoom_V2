@@ -92,11 +92,23 @@ public final class LinuxScreenShareEngine implements AutoCloseable {
 
     private FFmpegFrameGrabber initGrabber() throws FFmpegFrameGrabber.Exception {
         try {
+            LOGGER.info("[LinuxScreenShare] Attempting PipeWire capture");
             return buildAndStartGrabber("pipewire:", "pipewire");
         } catch (FFmpegFrameGrabber.Exception pipeWireError) {
-            LOGGER.log(Level.WARNING, "PipeWire capture failed, attempting X11 fallback", pipeWireError);
-            return buildAndStartGrabber(":0.0", "x11grab");
+            LOGGER.log(Level.WARNING,
+                "PipeWire capture failed, attempting X11 fallback", pipeWireError);
+            return startX11Grabber();
         }
+    }
+
+    private FFmpegFrameGrabber startX11Grabber() throws FFmpegFrameGrabber.Exception {
+        String display = System.getenv("DISPLAY");
+        if (display == null || display.isBlank()) {
+            throw new FFmpegFrameGrabber.Exception(
+                "DISPLAY environment variable is not set. Unable to use x11grab fallback.");
+        }
+        LOGGER.info("[LinuxScreenShare] Attempting X11 capture on display " + display);
+        return buildAndStartGrabber(display, "x11grab");
     }
 
     private FFmpegFrameGrabber buildAndStartGrabber(String device, String format)
