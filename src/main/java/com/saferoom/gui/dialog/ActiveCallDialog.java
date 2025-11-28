@@ -1,11 +1,15 @@
 package com.saferoom.gui.dialog;
 
 import com.saferoom.gui.components.VideoPanel;
+import com.saferoom.gui.dialog.ScreenSourcePickerDialog;
 import com.saferoom.webrtc.CallManager;
+import com.saferoom.webrtc.screenshare.ScreenShareController;
+import com.saferoom.webrtc.screenshare.ScreenSourceOption;
 import dev.onvoid.webrtc.media.video.VideoTrack;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
@@ -20,6 +24,8 @@ import java.time.Duration;
 import java.time.Instant;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
+import java.util.Optional;
 
 /**
  * Dialog for active WebRTC call
@@ -32,6 +38,7 @@ public class ActiveCallDialog {
     private final String callId;
     private final boolean videoEnabled;
     private final CallManager callManager;
+    private ScreenShareController screenShareController;
     
     // UI Components
     private Label durationLabel;
@@ -67,6 +74,7 @@ public class ActiveCallDialog {
         this.callId = callId;
         this.videoEnabled = videoEnabled;
         this.callManager = callManager;
+        this.screenShareController = callManager.getScreenShareController();
         this.callStartTime = Instant.now();
         this.stage = createDialog();
         
@@ -362,11 +370,13 @@ public class ActiveCallDialog {
      * Opens screen picker dialog and starts/stops screen sharing
      */
     private void handleShareScreen() {
-        if (isSharingScreen) {
-            // Stop screen sharing
+        ScreenShareController controller = requireScreenShareController();
+        if (controller == null) {
+            return;
+        }
+        if (controller.isSharing()) {
             stopScreenSharing();
         } else {
-            // Start screen sharing
             startScreenSharing();
         }
     }
@@ -375,143 +385,28 @@ public class ActiveCallDialog {
      * Start screen sharing
      */
     private void startScreenSharing() {
-        System.out.println("[ActiveCallDialog] Starting screen share...");
-        
-        try {
-            // Get available sources - WRAPPED IN TRY-CATCH to prevent native crash
-            java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> screens = null;
-            java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> windows = null;
-            
-            try {
-                System.out.println("[ActiveCallDialog] Attempting to enumerate screens...");
-                screens = callManager.getWebRTCClient().getAvailableScreens();
-                System.out.printf("[ActiveCallDialog] Found %d screens%n", screens != null ? screens.size() : 0);
-                
-                // Test safety of screens
-                if (screens != null && !screens.isEmpty()) {
-                    System.out.println("[ActiveCallDialog] Testing screen safety...");
-                    java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> safeScreens = new java.util.ArrayList<>();
-                    for (dev.onvoid.webrtc.media.video.desktop.DesktopSource screen : screens) {
-                        if (callManager.getWebRTCClient().testSourceSafety(screen, false)) {
-                            safeScreens.add(screen);
-                        }
-                    }
-                    screens = safeScreens;
-                    System.out.printf("[ActiveCallDialog] ✅ %d safe screens found%n", screens.size());
-                }
-            } catch (Throwable t) {
-                System.err.println("[ActiveCallDialog] ❌ Failed to enumerate screens (native error)");
-                System.err.println("[ActiveCallDialog] Error: " + t.getMessage());
-                screens = new java.util.ArrayList<>();
-            }
-            
-            try {
-                System.out.println("[ActiveCallDialog] Attempting to enumerate windows...");
-                windows = callManager.getWebRTCClient().getAvailableWindows();
-                System.out.printf("[ActiveCallDialog] Found %d windows (after filtering)%n", windows != null ? windows.size() : 0);
-                
-                // Test safety of windows
-                if (windows != null && !windows.isEmpty()) {
-                    System.out.println("[ActiveCallDialog] Testing window safety...");
-                    java.util.List<dev.onvoid.webrtc.media.video.desktop.DesktopSource> safeWindows = new java.util.ArrayList<>();
-                    for (dev.onvoid.webrtc.media.video.desktop.DesktopSource window : windows) {
-                        if (callManager.getWebRTCClient().testSourceSafety(window, true)) {
-                            safeWindows.add(window);
-                        }
-                    }
-                    windows = safeWindows;
-                    System.out.printf("[ActiveCallDialog] ✅ %d safe windows found%n", windows.size());
-                }
-            } catch (Throwable t) {
-                System.err.println("[ActiveCallDialog] ❌ Failed to enumerate windows (native error)");
-                System.err.println("[ActiveCallDialog] Error: " + t.getMessage());
-                windows = new java.util.ArrayList<>();
-            }
-            
-            // Check if we have any sources
-            if ((screens == null || screens.isEmpty()) && (windows == null || windows.isEmpty())) {
-                System.err.println("[ActiveCallDialog] ❌ No safe screens or windows available for sharing");
-                
-                // Show error dialog to user
-                javafx.application.Platform.runLater(() -> {
-                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                        javafx.scene.control.Alert.AlertType.ERROR
-                    );
-                    alert.setTitle("Screen Share Error");
-                    alert.setHeaderText("No Safe Screen Sources Available");
-                    alert.setContentText(
-                        "Unable to find screens or windows that can be safely shared.\n\n" +
-                        "This may be due to:\n" +
-                        "• Missing screen recording permissions\n" +
-                        "• System windows that cannot be captured\n" +
-                        "• Native library compatibility issues\n\n" +
-                        "Please check system permissions and try again."
-                    );
-                    alert.showAndWait();
-                });
-                
+        ScreenShareController controller = requireScreenShareController();
+        if (controller == null) {
+            return;
+        }
+        try (ScreenSourcePickerDialog dialog = new ScreenSourcePickerDialog(controller)) {
+            Optional<ScreenSourceOption> selection = dialog.showAndWait(stage);
+            if (selection.isEmpty()) {
+                updateShareScreenButton();
                 return;
             }
-            
-            // Load improved screen share picker dialog (Google Meet style)
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
-                getClass().getResource("/view/ImprovedScreenSharePickerDialog.fxml")
-            );
-            javafx.scene.layout.BorderPane dialogRoot = loader.load();
-            ImprovedScreenSharePickerDialog pickerController = loader.getController();
-            
-            // Create dialog stage
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle("Share Your Screen");
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
-            pickerController.setDialogStage(dialogStage);
-            
-            // Set available sources with WebRTC client for thumbnail capture
-            pickerController.setAvailableSources(
-                screens != null ? screens : new java.util.ArrayList<>(),
-                windows != null ? windows : new java.util.ArrayList<>(),
-                callManager.getWebRTCClient() // Pass client for thumbnail capture
-            );
-            
-            // Show dialog and wait for user selection
-            dialogStage.showAndWait();
-            
-            // Check if user confirmed
-            if (pickerController.isConfirmed()) {
-                dev.onvoid.webrtc.media.video.desktop.DesktopSource selectedSource = 
-                    pickerController.getSelectedSource();
-                boolean isWindow = pickerController.isWindowSelected();
-                
-                System.out.printf("[ActiveCallDialog] Selected source: id=%d, title=%s, isWindow=%b%n",
-                    selectedSource.id, selectedSource.title, isWindow);
-                
-                // Start screen share via CallManager
-                callManager.startScreenShare(selectedSource.id, isWindow);
-                
-                // Update UI state
-                isSharingScreen = true;
-                updateShareScreenButton();
-                
-                System.out.println("[ActiveCallDialog] ✅ Screen sharing started");
-            } else {
-                System.out.println("[ActiveCallDialog] Screen share cancelled");
-            }
-            
-        } catch (Throwable e) {
-            System.err.printf("[ActiveCallDialog] ❌ Error starting screen share: %s%n", e.getMessage());
-            e.printStackTrace();
-            
-            // Show error to user
-            javafx.application.Platform.runLater(() -> {
-                javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                    javafx.scene.control.Alert.AlertType.ERROR
-                );
-                alert.setTitle("Screen Share Error");
-                alert.setHeaderText("Failed to Start Screen Sharing");
-                alert.setContentText("Error: " + e.getMessage());
-                alert.showAndWait();
-            });
+            setShareButtonBusy(true);
+            controller.startScreenShare(selection.get())
+                .whenComplete((ignored, error) -> Platform.runLater(() -> {
+                    setShareButtonBusy(false);
+                    if (error != null) {
+                        showScreenShareError("Failed to start screen sharing", error);
+                    }
+                    isSharingScreen = controller.isSharing();
+                    updateShareScreenButton();
+                }));
+        } catch (Exception e) {
+            showScreenShareError("Failed to open screen picker", e);
         }
     }
     
@@ -519,17 +414,20 @@ public class ActiveCallDialog {
      * Stop screen sharing
      */
     private void stopScreenSharing() {
-        System.out.println("[ActiveCallDialog] Stopping screen share...");
-        
-        if (callManager != null) {
-            callManager.stopScreenShare();
-            
-            // Update UI state
-            isSharingScreen = false;
-            updateShareScreenButton();
-            
-            System.out.println("[ActiveCallDialog] ✅ Screen sharing stopped");
+        ScreenShareController controller = requireScreenShareController();
+        if (controller == null) {
+            return;
         }
+        setShareButtonBusy(true);
+        controller.stopScreenShare()
+            .whenComplete((ignored, error) -> Platform.runLater(() -> {
+                setShareButtonBusy(false);
+                if (error != null) {
+                    showScreenShareError("Failed to stop screen sharing", error);
+                }
+                isSharingScreen = controller.isSharing();
+                updateShareScreenButton();
+            }));
     }
     
     /**
@@ -537,7 +435,8 @@ public class ActiveCallDialog {
      */
     private void updateShareScreenButton() {
         if (shareScreenButton == null) return;
-        
+        isSharingScreen = screenShareController != null && screenShareController.isSharing();
+
         FontIcon icon = new FontIcon(isSharingScreen ? 
             FontAwesomeSolid.STOP : FontAwesomeSolid.DESKTOP);
         icon.setIconSize(24);
@@ -554,6 +453,35 @@ public class ActiveCallDialog {
         ));
         
         shareScreenButton.setTooltip(new javafx.scene.control.Tooltip(tooltip));
+        System.out.printf("[ActiveCallDialog] Share screen button updated: isSharing=%b%n", isSharingScreen);
+    }
+
+    private ScreenShareController requireScreenShareController() {
+        if (screenShareController == null && callManager != null) {
+            screenShareController = callManager.getScreenShareController();
+        }
+        if (screenShareController == null) {
+            showScreenShareError("Screen sharing is not available right now.", null);
+        }
+        return screenShareController;
+    }
+
+    private void setShareButtonBusy(boolean busy) {
+        if (shareScreenButton != null) {
+            shareScreenButton.setDisable(busy);
+        }
+    }
+
+    private void showScreenShareError(String header, Throwable error) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Screen Share");
+        alert.setHeaderText(header);
+        if (error != null && error.getMessage() != null) {
+            alert.setContentText(error.getMessage());
+        } else {
+            alert.setContentText(null);
+        }
+        alert.show();
     }
     
     /**

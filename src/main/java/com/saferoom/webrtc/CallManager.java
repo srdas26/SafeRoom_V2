@@ -2,7 +2,11 @@ package com.saferoom.webrtc;
 
 import com.saferoom.grpc.SafeRoomProto.WebRTCSignal;
 import com.saferoom.grpc.SafeRoomProto.WebRTCSignal.SignalType;
+import com.saferoom.webrtc.screenshare.ScreenShareController;
+import com.saferoom.webrtc.screenshare.ScreenShareManager;
+import dev.onvoid.webrtc.PeerConnectionFactory;
 import dev.onvoid.webrtc.RTCIceCandidate;
+import dev.onvoid.webrtc.RTCPeerConnection;
 import dev.onvoid.webrtc.media.video.VideoTrack;
 import dev.onvoid.webrtc.media.MediaStreamTrack;
 
@@ -29,6 +33,8 @@ public class CallManager {
     private boolean isOutgoingCall;
     
     private WebRTCClient webrtcClient;
+    private ScreenShareManager screenShareManager;
+    private ScreenShareController screenShareController;
     
     // GUI Callbacks
     private Consumer<IncomingCallInfo> onIncomingCallCallback;
@@ -153,6 +159,7 @@ public class CallManager {
                 // Create WebRTC peer connection
                 webrtcClient = new WebRTCClient(callId, targetUsername);
                 webrtcClient.createPeerConnection(audioEnabled, videoEnabled);
+                ensureScreenShareController();
                 
                 // 🎤 Add audio track if audio enabled
                 if (audioEnabled) {
@@ -164,6 +171,7 @@ public class CallManager {
                 if (videoEnabled) {
                     System.out.println("[CallManager] 📹 Adding video track for outgoing call...");
                     webrtcClient.addVideoTrack();
+                    registerCameraWithScreenShareController();
                 }
                 
                 // Set up callbacks
@@ -300,97 +308,6 @@ public class CallManager {
     // Screen Sharing
     // ===============================
     
-    /**
-     * Start screen sharing and renegotiate
-     * @param sourceId Desktop source ID
-     * @param isWindow true if window, false if screen
-     */
-    public void startScreenShare(long sourceId, boolean isWindow) {
-        if (currentState != CallState.CONNECTED) {
-            System.err.println("[CallManager] ⚠️ Cannot share screen - not in active call");
-            return;
-        }
-        
-        if (webrtcClient == null) {
-            System.err.println("[CallManager] ⚠️ WebRTC client not initialized");
-            return;
-        }
-        
-        System.out.printf("[CallManager] 🖥️ Starting screen share: sourceId=%d, isWindow=%b%n", sourceId, isWindow);
-        
-        // Start screen sharing on WebRTC client
-        webrtcClient.startScreenShare(sourceId, isWindow);
-        
-        // Renegotiate with new screen share track
-        renegotiateWithScreenShare();
-    }
-    
-    /**
-     * Stop screen sharing and renegotiate
-     */
-    public void stopScreenShare() {
-        if (webrtcClient == null || !webrtcClient.isScreenSharingEnabled()) {
-            System.err.println("[CallManager] Screen sharing not active");
-            return;
-        }
-        
-        System.out.println("[CallManager] Stopping screen share");
-        
-        // Stop screen sharing (restores camera video)
-        webrtcClient.stopScreenShare();
-        
-        // Renegotiate to notify remote peer about camera restoration
-        renegotiateAfterScreenShareStop();
-    }
-    
-    /**
-     * Renegotiate connection with screen share track (replaced camera)
-     */
-    private void renegotiateWithScreenShare() {
-        System.out.println("[CallManager] Renegotiating with screen share...");
-        System.out.println("[CallManager] 🖥️ Creating offer with screen share (replaced camera)");
-        
-        // Create new offer with screen share track (camera is replaced)
-        webrtcClient.createOffer()
-            .thenAccept(sdp -> {
-                System.out.println("[CallManager] Sending SCREEN_SHARE_OFFER with new SDP");
-                
-                // Send screen share offer (special signal type for renegotiation)
-                signalingClient.sendScreenShareOffer(currentCallId, remoteUsername, sdp);
-                
-                System.out.println("[CallManager] Screen share offer sent");
-            })
-            .exceptionally(e -> {
-                System.err.printf("[CallManager] Failed to create screen share offer: %s%n", e.getMessage());
-                e.printStackTrace();
-                return null;
-            });
-    }
-    
-    /**
-     * Renegotiate after stopping screen share (camera restored)
-     */
-    private void renegotiateAfterScreenShareStop() {
-        System.out.println("[CallManager] Renegotiating after screen share stop...");
-        System.out.println("[CallManager] 📹 Creating offer with restored camera");
-        
-        // Create new offer with camera video restored
-        webrtcClient.createOffer()
-            .thenAccept(sdp -> {
-                System.out.println("[CallManager] Sending SCREEN_SHARE_STOP signal with renegotiation");
-                
-                // Send screen share stop signal
-                signalingClient.sendScreenShareStop(currentCallId, remoteUsername);
-                
-                System.out.println("[CallManager] Screen share stop signal sent");
-            })
-            .exceptionally(e -> {
-                System.err.printf("[CallManager] Failed to create offer after screen share stop: %s%n", e.getMessage());
-                e.printStackTrace();
-                return null;
-            });
-    }
-    
     // ===============================
     // Signal Handlers (from server)
     // ===============================
@@ -507,6 +424,7 @@ public class CallManager {
         // Create WebRTC peer connection
         webrtcClient = new WebRTCClient(currentCallId, remoteUsername);
         webrtcClient.createPeerConnection(signal.getAudioEnabled(), signal.getVideoEnabled());
+        ensureScreenShareController();
         
         // 🎤 Add audio track if audio enabled
         if (signal.getAudioEnabled()) {
@@ -518,6 +436,7 @@ public class CallManager {
         if (signal.getVideoEnabled()) {
             System.out.println("[CallManager] Adding video track for incoming call...");
             webrtcClient.addVideoTrack();
+            registerCameraWithScreenShareController();
         }
         
         setupWebRTCCallbacks();
@@ -742,6 +661,55 @@ public class CallManager {
             }
         });
     }
+
+    private void ensureScreenShareController() {
+        if (screenShareController != null || webrtcClient == null) {
+            return;
+        }
+        PeerConnectionFactory factory = WebRTCClient.getFactory();
+        if (factory == null) {
+            System.err.println("[CallManager] ScreenShareController unavailable: factory is null");
+            return;
+        }
+        RTCPeerConnection peerConnection = webrtcClient.getPeerConnection();
+        if (peerConnection == null) {
+            System.err.println("[CallManager] ScreenShareController unavailable: peer connection not ready");
+            return;
+        }
+        screenShareManager = new ScreenShareManager(factory, peerConnection, new CallScreenShareRenegotiationHandler());
+        screenShareController = new ScreenShareController(screenShareManager);
+        registerCameraWithScreenShareController();
+    }
+
+    private void registerCameraWithScreenShareController() {
+        if (screenShareController == null || webrtcClient == null) {
+            return;
+        }
+        if (webrtcClient.getVideoSender() != null && webrtcClient.getLocalVideoTrack() != null) {
+            screenShareController.registerCameraSource(
+                webrtcClient.getVideoSender(),
+                webrtcClient.getLocalVideoTrack()
+            );
+        }
+    }
+
+    private final class CallScreenShareRenegotiationHandler implements ScreenShareManager.RenegotiationHandler {
+        @Override
+        public void onScreenShareOffer(String sdp) {
+            if (signalingClient == null || currentCallId == null || remoteUsername == null) {
+                return;
+            }
+            signalingClient.sendScreenShareOffer(currentCallId, remoteUsername, sdp);
+        }
+
+        @Override
+        public void onScreenShareStopped(String sdp) {
+            if (signalingClient == null || currentCallId == null || remoteUsername == null) {
+                return;
+            }
+            signalingClient.sendScreenShareStop(currentCallId, remoteUsername);
+        }
+    }
     
     // ===============================
     // Cleanup
@@ -769,6 +737,15 @@ public class CallManager {
         if (webrtcClient != null) {
             webrtcClient.close();
             webrtcClient = null;
+        }
+
+        if (screenShareController != null) {
+            try {
+                screenShareController.close();
+            } catch (Exception ignored) {
+            }
+            screenShareController = null;
+            screenShareManager = null;
         }
         
         System.out.println("[CallManager] Cleanup complete");
@@ -824,6 +801,11 @@ public class CallManager {
     
     public boolean isInCall() {
         return currentState != CallState.IDLE && currentState != CallState.ENDED;
+    }
+
+    public ScreenShareController getScreenShareController() {
+        ensureScreenShareController();
+        return screenShareController;
     }
     
     public VideoTrack getLocalVideoTrack() {

@@ -32,11 +32,6 @@ public class WebRTCClient {
     // Track RTP senders for replaceTrack operations
     private RTCRtpSender videoSender = null;
     
-    // Screen sharing
-    private MediaStreamTrack screenShareTrack;
-    private VideoDesktopSource screenShareSource;
-    private boolean screenSharingEnabled = false;
-    
     // Callbacks
     private Consumer<RTCIceCandidate> onIceCandidateCallback;
     private Consumer<String> onLocalSDPCallback;
@@ -683,121 +678,16 @@ public class WebRTCClient {
      * Get available screens for sharing
      */
     public List<DesktopSource> getAvailableScreens() {
-        System.out.println("[WebRTC] Enumerating available screens...");
-        
-        if (factory == null) {
-            System.err.println("[WebRTC] Factory not initialized - screen sharing not available");
-            return new ArrayList<>();
-        }
-        
-        // CRITICAL: Native code can crash on Linux - wrap in extra safety
-        ScreenCapturer screenCapturer = null;
-        try {
-            System.out.println("[WebRTC] Creating ScreenCapturer...");
-            screenCapturer = new ScreenCapturer();
-            
-            System.out.println("[WebRTC] Getting desktop sources from native code...");
-            List<DesktopSource> screens = screenCapturer.getDesktopSources();
-            
-            System.out.printf("[WebRTC] ✅ Found %d screens%n", screens != null ? screens.size() : 0);
-            if (screens != null) {
-                for (DesktopSource screen : screens) {
-                    System.out.printf("  - Screen: %s (ID: %d)%n", screen.title, screen.id);
-                }
-            }
-            
-            return screens != null ? screens : new ArrayList<>();
-            
-        } catch (Throwable t) {
-            // Catch ALL throwables including native crashes that made it to Java
-            System.err.println("[WebRTC] ❌❌❌ CRITICAL: Native screen enumeration failed!");
-            System.err.println("[WebRTC] Error type: " + t.getClass().getName());
-            System.err.println("[WebRTC] Error message: " + t.getMessage());
-            t.printStackTrace();
-            return new ArrayList<>();
-            
-        } finally {
-            // Always dispose, even on error
-            if (screenCapturer != null) {
-                try {
-                    System.out.println("[WebRTC] Disposing ScreenCapturer...");
-                    screenCapturer.dispose();
-                } catch (Throwable t) {
-                    System.err.println("[WebRTC] Error disposing ScreenCapturer: " + t.getMessage());
-                }
-            }
-        }
+        throw new UnsupportedOperationException(
+            "Legacy screen enumeration has been removed. Use ScreenSourcePickerDialog instead.");
     }
     
     /**
      * Get available windows for sharing
      */
     public List<DesktopSource> getAvailableWindows() {
-        System.out.println("[WebRTC] Enumerating available windows...");
-        
-        if (factory == null) {
-            System.err.println("[WebRTC] Factory not initialized - screen sharing not available");
-            return new ArrayList<>();
-        }
-        
-        // CRITICAL: Native code can crash on Linux - wrap in extra safety
-        WindowCapturer windowCapturer = null;
-        try {
-            System.out.println("[WebRTC] Creating WindowCapturer...");
-            windowCapturer = new WindowCapturer();
-            
-            System.out.println("[WebRTC] Getting desktop sources from native code...");
-            List<DesktopSource> windows = windowCapturer.getDesktopSources();
-            
-            System.out.printf("[WebRTC] ✅ Found %d windows%n", windows != null ? windows.size() : 0);
-            if (windows != null) {
-                // Filter out potentially problematic windows
-                List<DesktopSource> safeWindows = new ArrayList<>();
-                for (DesktopSource window : windows) {
-                    // Skip windows without proper title (can cause crashes)
-                    if (window.title == null || window.title.trim().isEmpty()) {
-                        System.out.printf("  ⚠️ Skipping window with null/empty title (ID: %d)%n", window.id);
-                        continue;
-                    }
-                    
-                    // Skip system windows that might cause issues
-                    String lowerTitle = window.title.toLowerCase();
-                    if (lowerTitle.contains("notification") || 
-                        lowerTitle.contains("alert") ||
-                        lowerTitle.contains("problem reporter")) {
-                        System.out.printf("  ⚠️ Skipping system window: %s (ID: %d)%n", window.title, window.id);
-                        continue;
-                    }
-                    
-                    System.out.printf("  - Window: %s (ID: %d)%n", window.title, window.id);
-                    safeWindows.add(window);
-                }
-                
-                System.out.printf("[WebRTC] ✅ Filtered to %d safe windows%n", safeWindows.size());
-                return safeWindows;
-            }
-            
-            return new ArrayList<>();
-            
-        } catch (Throwable t) {
-            // Catch ALL throwables including native crashes that made it to Java
-            System.err.println("[WebRTC] ❌❌❌ CRITICAL: Native window enumeration failed!");
-            System.err.println("[WebRTC] Error type: " + t.getClass().getName());
-            System.err.println("[WebRTC] Error message: " + t.getMessage());
-            t.printStackTrace();
-            return new ArrayList<>();
-            
-        } finally {
-            // Always dispose, even on error
-            if (windowCapturer != null) {
-                try {
-                    System.out.println("[WebRTC] Disposing WindowCapturer...");
-                    windowCapturer.dispose();
-                } catch (Throwable t) {
-                    System.err.println("[WebRTC] Error disposing WindowCapturer: " + t.getMessage());
-                }
-            }
-        }
+        throw new UnsupportedOperationException(
+            "Legacy screen enumeration has been removed. Use ScreenSourcePickerDialog instead.");
     }
     
     /**
@@ -805,39 +695,7 @@ public class WebRTCClient {
      * Returns true if source can be safely used
      */
     public boolean testSourceSafety(DesktopSource source, boolean isWindow) {
-        System.out.printf("[WebRTC] Testing source safety: %s (isWindow=%b)%n", source.title, isWindow);
-        
-        if (factory == null) {
-            return false;
-        }
-        
-        VideoDesktopSource testSource = null;
-        try {
-            // Try to create and start a temporary desktop source
-            testSource = new VideoDesktopSource();
-            testSource.setSourceId(source.id, isWindow);
-            testSource.setFrameRate(1); // Minimal framerate
-            testSource.setMaxFrameSize(160, 120); // Tiny size
-            
-            // Try to start (this is where crashes usually happen)
-            testSource.start();
-            
-            // If we got here, source is safe
-            System.out.printf("[WebRTC] ✅ Source is SAFE: %s%n", source.title);
-            return true;
-            
-        } catch (Throwable t) {
-            System.err.printf("[WebRTC] ❌ Source is UNSAFE: %s - %s%n", source.title, t.getMessage());
-            return false;
-            
-        } finally {
-            if (testSource != null) {
-                try {
-                    testSource.stop();
-                    testSource.dispose();
-                } catch (Throwable ignored) {}
-            }
-        }
+        throw new UnsupportedOperationException("Legacy screen share safety path removed.");
     }
     
     /**
@@ -846,161 +704,28 @@ public class WebRTCClient {
      * @param isWindow true if sharing window, false if sharing screen
      */
     public void startScreenShare(long sourceId, boolean isWindow) {
-        System.out.printf("[WebRTC] Starting screen share: sourceId=%d, isWindow=%b%n", sourceId, isWindow);
-        
-        if (factory == null) {
-            System.err.println("[WebRTC] Factory not initialized - cannot start screen sharing");
-            return;
-        }
-        
-        boolean wasAlreadySharing = screenSharingEnabled;
-        
-        if (screenSharingEnabled) {
-            System.out.println("[WebRTC] Screen sharing already active - switching to new source");
-            stopScreenShare();
-        }
-        
-        try {
-            // Create VideoDesktopSource
-            screenShareSource = new VideoDesktopSource();
-            
-            // Configure capture settings
-            screenShareSource.setFrameRate(30);
-            screenShareSource.setMaxFrameSize(1920, 1080);
-            screenShareSource.setSourceId(sourceId, isWindow);
-            
-            // Start capturing
-            screenShareSource.start();
-            System.out.println("[WebRTC] Desktop capture started");
-            
-            // Create video track from desktop source with unique ID including source
-            String trackId = "screen_share_" + sourceId;
-            screenShareTrack = factory.createVideoTrack(trackId, screenShareSource);
-            screenShareTrack.setEnabled(true);
-            
-            // Add track to peer connection if exists
-            if (peerConnection != null) {
-                // IMPORTANT: Use replaceTrack() to replace camera with screen share
-                // This is the standard WebRTC approach for screen sharing
-                if (videoSender != null) {
-                    try {
-                        videoSender.replaceTrack(screenShareTrack);
-                        System.out.printf("[WebRTC] ✅ Camera video replaced with screen share (track: %s)%n", trackId);
-                    } catch (Exception e) {
-                        System.err.printf("[WebRTC] Failed to replace track: %s%n", e.getMessage());
-                        // Fallback: try addTrack
-                        List<String> streamIds = new ArrayList<>();
-                        streamIds.add("screen_share_stream");
-                        peerConnection.addTrack(screenShareTrack, streamIds);
-                        System.out.println("[WebRTC] ⚠️ Fallback: added screen share as new track");
-                    }
-                } else {
-                    // No existing video sender, add track normally
-                    List<String> streamIds = new ArrayList<>();
-                    streamIds.add("screen_share_stream");
-                    peerConnection.addTrack(screenShareTrack, streamIds);
-                    System.out.println("[WebRTC] ⚠️ No video sender found, added screen share as new track");
-                }
-                
-                // Renegotiation required
-                if (wasAlreadySharing) {
-                    System.out.println("[WebRTC] 🔄 Source changed - renegotiation required");
-                } else {
-                    System.out.println("[WebRTC] ⚠️ Renegotiation required - caller should create new offer");
-                }
-            }
-            
-            screenSharingEnabled = true;
-            System.out.printf("[WebRTC] Screen sharing started successfully (source: %d)%n", sourceId);
-            
-        } catch (Exception e) {
-            System.err.printf("[WebRTC] Failed to start screen sharing: %s%n", e.getMessage());
-            e.printStackTrace();
-            stopScreenShare(); // Cleanup on failure
-        }
+        throw new UnsupportedOperationException(
+            "Legacy screen share path removed. Use ScreenShareController.startScreenShare(ScreenSourceOption).");
     }
     
     /**
      * Stop screen sharing
      */
     public void stopScreenShare() {
-        System.out.println("[WebRTC] Stopping screen share...");
-        
-        if (!screenSharingEnabled) {
-            System.out.println("[WebRTC] Screen sharing not active");
-            return;
-        }
-        
-        try {
-            // Restore camera video track if we used replaceTrack
-            if (videoSender != null && localVideoTrack != null) {
-                try {
-                    videoSender.replaceTrack(localVideoTrack);
-                    System.out.println("[WebRTC] ✅ Restored camera video track");
-                } catch (Exception e) {
-                    System.err.println("[WebRTC] Error restoring camera track: " + e.getMessage());
-                }
-            }
-            
-            // Stop desktop source before disposing track
-            if (screenShareSource != null) {
-                try {
-                    screenShareSource.stop();
-                    System.out.println("[WebRTC] Desktop source stopped");
-                } catch (Exception e) {
-                    System.err.println("[WebRTC] Error stopping desktop source: " + e.getMessage());
-                }
-            }
-            
-            // Set track to null BEFORE disposing to avoid "Native object was not deleted" error
-            MediaStreamTrack trackToDispose = screenShareTrack;
-            screenShareTrack = null;
-            screenSharingEnabled = false;
-            
-            // Now dispose track (after clearing reference)
-            if (trackToDispose != null) {
-                try {
-                    trackToDispose.setEnabled(false);
-                    trackToDispose.dispose();
-                    System.out.println("[WebRTC] Screen share track disposed");
-                } catch (Exception e) {
-                    System.err.println("[WebRTC] Error disposing track: " + e.getMessage());
-                }
-            }
-            
-            // Finally dispose source
-            if (screenShareSource != null) {
-                try {
-                    screenShareSource.dispose();
-                    System.out.println("[WebRTC] Desktop source disposed");
-                } catch (Exception e) {
-                    System.err.println("[WebRTC] Error disposing desktop source: " + e.getMessage());
-                }
-                screenShareSource = null;
-            }
-            
-            System.out.println("[WebRTC] Screen sharing stopped successfully - camera video restored");
-            
-        } catch (Exception e) {
-            System.err.printf("[WebRTC] Error stopping screen share: %s%n", e.getMessage());
-            e.printStackTrace();
-        }
+        throw new UnsupportedOperationException(
+            "Legacy screen share path removed. Use ScreenShareController.stopScreenShare().");
     }
     
     /**
      * Check if screen sharing is currently active
      */
     public boolean isScreenSharingEnabled() {
-        return screenSharingEnabled;
+        return false;
     }
     
     /**
      * Get screen share video track (for local preview)
      */
-    public VideoTrack getScreenShareTrack() {
-        return (VideoTrack) screenShareTrack;
-    }
-    
     // ===============================
     // Helper Methods
     // ===============================
@@ -1026,6 +751,14 @@ public class WebRTCClient {
     public boolean isVideoEnabled() {
         return videoEnabled;
     }
+
+    public RTCPeerConnection getPeerConnection() {
+        return peerConnection;
+    }
+
+    public RTCRtpSender getVideoSender() {
+        return videoSender;
+    }
     
     public VideoTrack getLocalVideoTrack() {
         VideoTrack track = (VideoTrack) localVideoTrack;
@@ -1047,18 +780,7 @@ public class WebRTCClient {
      * show placeholder icons instead.
      */
     public VideoFrame captureThumbnail(DesktopSource source, boolean isWindow) {
-        System.out.printf("[WebRTC] Thumbnail capture requested for: %s (isWindow=%b)%n", source.title, isWindow);
-        System.out.println("[WebRTC] ⚠️ Thumbnail capture is disabled due to platform limitations");
-        
-        // Thumbnail capture causes issues on some platforms (especially Linux)
-        // The native screen capture API doesn't provide a clean way to get a single frame
-        // without starting a full capture session, which can cause crashes or hangs.
-        // 
-        // For now, we'll use placeholder icons in the UI instead of real thumbnails.
-        // This is similar to how Google Meet initially shows placeholders before
-        // hovering/selecting a source.
-        
-        return null;
+        throw new UnsupportedOperationException("Thumbnail capture is handled by ScreenSourcePickerDialog.");
     }
     
     // ===============================
