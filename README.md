@@ -9,7 +9,7 @@
 ## 🚀 Beyond "Just Meetings"
 SafeRoom_V2 is not just a video calling app. It is a **serverless, secure, all-in-one collaboration protocol** that challenges the giants:
 
-| ⚔️ Competing With | Why SafeRoom Wins |
+|    Competing With | Why SafeRoom Wins |
 |-------------------|-------------------|
 | **Zoom / Teams** | No central servers recording your calls. Low latency via **Dynamic Tree Routing**. |
 | **Discord** | "Serverless Rooms" — Your community lives on your devices, not in a data center. No bans, no data mining. |
@@ -22,19 +22,19 @@ SafeRoom_V2 is not just a video calling app. It is a **serverless, secure, all-i
 
 Unlike traditional apps that relay everything through a central cloud, SafeRoom_V2 uses a **completely decentralized architecture**:
 
-### 1. 🌲 Dynamic Tree Algorithm (Mesh Routing)
+### 1. Dynamic Tree Algorithm (Mesh Routing)
 Instead of a star topology (everyone connects to a server), SafeRoom builds a **dynamic, self-healing mesh**.
 - **Low Latency:** Packets take the shortest path between peers.
 - **Resilience:** If one node drops, the tree rebuilds instantly.
 - **Scalability:** The network grows stronger as more users join.
 
-### 2. 🌀 BitTorrent-like File Vault
+### 2. BitTorrent-like File Vault
 Forget uploading to the cloud. SafeRoom uses a swarm-like protocol for file transfers.
 - **Zero Cloud Storage:** Files stream directly from sender to receiver(s).
 - **Parallel Chunks:** Large files are split and sent via multiple paths for maximum speed.
 - **Resume Capability:** Network drop? It picks up exactly where it left off.
 
-### 3. 🏰 Serverless Rooms (The "Discord" Killer)
+### 3. Serverless Rooms
 In SafeRoom, a "Room" isn't a database entry on our server. It's a **cryptographic space** held together by the participants.
 - **Ephemeral or Persistent:** You decide.
 - **No Central Admin:** The community owns the infrastructure.
