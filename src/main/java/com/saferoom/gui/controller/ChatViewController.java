@@ -2,6 +2,7 @@ package com.saferoom.gui.controller;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -11,18 +12,26 @@ import com.saferoom.gui.dialog.IncomingCallDialog;
 import com.saferoom.gui.dialog.OutgoingCallDialog;
 import com.saferoom.gui.model.Message;
 import com.saferoom.gui.model.User;
+import com.saferoom.gui.search.MessageSearchPanel;
+import com.saferoom.gui.search.SearchHit;
 import com.saferoom.gui.service.ChatService;
 import com.saferoom.gui.view.cell.MessageCell;
 import com.saferoom.storage.FTS5SearchService;
 import com.saferoom.storage.LocalDatabase;
+import com.saferoom.storage.SqlCipherHelper;
 import com.saferoom.webrtc.CallManager;
 
 import dev.onvoid.webrtc.media.video.VideoTrack;
+import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.geometry.Side;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -38,12 +47,11 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
-import java.util.List;
 
 public class ChatViewController {
 
@@ -117,10 +125,14 @@ public class ChatViewController {
     private boolean callbacksSetup = false;
     private boolean currentCallVideoEnabled = false;
     
-    // Search variables
+    // Search variables (legacy - keeping for compatibility)
     private FTS5SearchService searchService;
     private List<String> searchResultMessageIds;
     private int currentSearchIndex = -1;
+    
+    // NEW: WhatsApp-style search panel
+    private MessageSearchPanel searchPanel;
+    private String highlightedMessageId = null;
 
     @FXML
     public void initialize() {
@@ -278,6 +290,9 @@ public class ChatViewController {
         this.currentChannelId = channelId;
         this.messages = chatService.getMessagesForChannel(channelId);
 
+        // DEBUG: Check if messages are already loaded (from preload)
+        System.out.println("[ChatView] initChannel: " + channelId + " - messages already in RAM: " + messages.size());
+
         messageListView.setItems(messages);
         messageListView.setCellFactory(param -> new MessageCell(currentUser.getId()));
 
@@ -301,10 +316,14 @@ public class ChatViewController {
             }
         });
 
-        // NEW: Load conversation history from disk
-        loadConversationHistoryAsync(channelId);
-        
-        if (!messages.isEmpty()) {
+        // Load from disk ONLY if not already loaded (preload may have done this)
+        if (messages.isEmpty()) {
+            System.out.println("[ChatView] Messages empty, loading from disk...");
+            loadConversationHistoryAsync(channelId);
+        } else {
+            System.out.println("[ChatView] Messages already loaded, skipping disk load");
+            // Force UI refresh
+            messageListView.refresh();
             messageListView.scrollTo(messages.size() - 1);
         }
     }
@@ -533,7 +552,7 @@ public class ChatViewController {
     
     /**
      * Contact Info Search Button Handler
-     * Opens in-conversation search dialog
+     * Opens WhatsApp-style search panel
      */
     @FXML
     private void handleInfoSearch() {
@@ -544,7 +563,8 @@ public class ChatViewController {
         
         // Check if persistence is enabled
         try {
-            if (LocalDatabase.getInstance() == null) {
+            LocalDatabase db = LocalDatabase.getInstance();
+            if (db == null || db.getConnection() == null) {
                 showAlert("Search Unavailable", 
                     "Search feature requires persistent storage to be enabled.\n" +
                     "Messages are currently stored in RAM only.", 
@@ -552,13 +572,8 @@ public class ChatViewController {
                 return;
             }
             
-            // Initialize search service if not already
-            if (searchService == null) {
-                searchService = new FTS5SearchService(LocalDatabase.getInstance());
-            }
-            
-            // Show search dialog
-            showSearchDialog();
+            // Show WhatsApp-style search panel
+            showSearchPanel();
             
         } catch (IllegalStateException e) {
             showAlert("Search Unavailable", 
@@ -569,42 +584,188 @@ public class ChatViewController {
     }
     
     /**
-     * Show search dialog with TextInputDialog
+     * Show WhatsApp-style search panel with slide-in animation
      */
-    private void showSearchDialog() {
-        javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog();
-        dialog.setTitle("Search in Conversation");
-        dialog.setHeaderText("Search messages with " + chatPartnerName.getText());
-        dialog.setContentText("Enter search term:");
-        
-        // Add stylesheet
-        try {
-            dialog.getDialogPane().getStylesheets().add(
-                getClass().getResource("/styles/styles.css").toExternalForm());
-        } catch (Exception e) {
-            // Ignore stylesheet error
+    private void showSearchPanel() {
+        // Initialize search panel if needed
+        if (searchPanel == null) {
+            initializeSearchPanel();
         }
         
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(query -> {
-            if (!query.trim().isEmpty()) {
-                performSearch(query.trim());
-            }
-        });
+        // Generate conversation ID
+        String conversationId = SqlCipherHelper.generateConversationId(
+            chatService.getCurrentUsername(), 
+            currentChannelId
+        );
+        
+        // Show the panel
+        searchPanel.show(conversationId, chatService.getCurrentUsername());
     }
     
     /**
-     * Perform search and navigate to results
+     * Hide search panel with slide-out animation
      */
+    private void hideSearchPanel() {
+        if (searchPanel != null && searchPanel.isShowing()) {
+            searchPanel.hide();
+        }
+    }
+    
+    /**
+     * Initialize the WhatsApp-style search panel
+     */
+    private void initializeSearchPanel() {
+        searchPanel = new MessageSearchPanel();
+        
+        // Load CSS
+        try {
+            String cssPath = getClass().getResource("/css/search-panel.css").toExternalForm();
+            searchPanel.getStylesheets().add(cssPath);
+        } catch (Exception e) {
+            System.err.println("[ChatView] Could not load search-panel.css: " + e.getMessage());
+        }
+        
+        // Set callback for when a result is clicked
+        searchPanel.setOnResultSelected(this::handleSearchResultSelected);
+        
+        // Set callback for when panel is closed
+        searchPanel.setOnClose(() -> {
+            // Clear any highlights
+            if (highlightedMessageId != null) {
+                clearMessageHighlight(highlightedMessageId);
+                highlightedMessageId = null;
+            }
+        });
+        
+        // Add panel to the chat pane (overlay on right side)
+        if (chatPane != null) {
+            // Wrap existing content in StackPane if needed
+            if (!(chatPane.getCenter() instanceof StackPane)) {
+                javafx.scene.Node existingCenter = chatPane.getCenter();
+                StackPane stackPane = new StackPane();
+                stackPane.getChildren().add(existingCenter);
+                stackPane.getChildren().add(searchPanel);
+                
+                // Align search panel to right
+                StackPane.setAlignment(searchPanel, javafx.geometry.Pos.CENTER_RIGHT);
+                
+                chatPane.setCenter(stackPane);
+            } else {
+                StackPane stackPane = (StackPane) chatPane.getCenter();
+                if (!stackPane.getChildren().contains(searchPanel)) {
+                    stackPane.getChildren().add(searchPanel);
+                    StackPane.setAlignment(searchPanel, javafx.geometry.Pos.CENTER_RIGHT);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Handle when a search result is clicked
+     */
+    private void handleSearchResultSelected(SearchHit hit) {
+        if (hit == null || messages == null) return;
+        
+        // Find message index by ID
+        int index = findMessageIndexById(hit.getMessageId());
+        
+        if (index >= 0) {
+            // Scroll to message
+            messageListView.scrollTo(index);
+            
+            // Highlight the message
+            highlightMessage(hit.getMessageId());
+        } else {
+            System.err.println("[ChatView] Message not found in list: " + hit.getMessageId());
+        }
+    }
+    
+    /**
+     * Find message index by ID
+     */
+    private int findMessageIndexById(String messageId) {
+        if (messages == null || messageId == null) return -1;
+        
+        for (int i = 0; i < messages.size(); i++) {
+            if (messageId.equals(messages.get(i).getId())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Highlight a message with yellow flash animation (2 seconds)
+     */
+    private void highlightMessage(String messageId) {
+        // Clear previous highlight
+        if (highlightedMessageId != null) {
+            clearMessageHighlight(highlightedMessageId);
+        }
+        
+        highlightedMessageId = messageId;
+        
+        // Find the message and trigger highlight
+        int index = findMessageIndexById(messageId);
+        if (index >= 0) {
+            // Select the item to ensure it's visible
+            messageListView.getSelectionModel().select(index);
+            
+            // Schedule highlight removal after 2 seconds
+            Timeline timeline = new Timeline(
+                new KeyFrame(Duration.seconds(2), e -> {
+                    clearMessageHighlight(messageId);
+                    messageListView.getSelectionModel().clearSelection();
+                })
+            );
+            timeline.play();
+            
+            // Refresh to apply highlight style
+            messageListView.refresh();
+        }
+    }
+    
+    /**
+     * Clear message highlight
+     */
+    private void clearMessageHighlight(String messageId) {
+        highlightedMessageId = null;
+        messageListView.refresh();
+    }
+    
+    /**
+     * Check if a message is currently highlighted
+     */
+    public boolean isMessageHighlighted(String messageId) {
+        return messageId != null && messageId.equals(highlightedMessageId);
+    }
+    
+    // ========== LEGACY SEARCH METHODS (kept for compatibility) ==========
+    
+    /**
+     * @deprecated Use showSearchPanel() instead
+     */
+    @Deprecated
+    private void showSearchDialog() {
+        showSearchPanel();
+    }
+    
+    /**
+     * @deprecated Use handleSearchResultSelected() instead
+     */
+    @Deprecated
     private void performSearch(String query) {
         // Get conversation ID
-        String conversationId = com.saferoom.storage.SqlCipherHelper.generateConversationId(
+        String conversationId = SqlCipherHelper.generateConversationId(
             chatService.getCurrentUsername(), 
             currentChannelId
         );
         
         // Search in background
         java.util.concurrent.CompletableFuture.runAsync(() -> {
+            if (searchService == null) {
+                searchService = new FTS5SearchService(LocalDatabase.getInstance());
+            }
             searchResultMessageIds = searchService.getMatchingMessageIds(query, conversationId);
             
             Platform.runLater(() -> {
@@ -614,7 +775,6 @@ public class ChatViewController {
                         Alert.AlertType.INFORMATION);
                 } else {
                     currentSearchIndex = 0;
-                    showSearchNavigationDialog(query, searchResultMessageIds.size());
                     scrollToSearchResult(0);
                 }
             });

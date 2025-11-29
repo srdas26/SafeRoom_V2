@@ -48,6 +48,12 @@ public class PersistentChatLoader {
             ObservableList<Message> messagesObservableList) {
         
         return CompletableFuture.supplyAsync(() -> {
+            // Skip if already loaded (prevent duplicate loading)
+            if (!messagesObservableList.isEmpty()) {
+                LOGGER.info("History already loaded for: " + username + " (skipping)");
+                return messagesObservableList.size();
+            }
+            
             String conversationId = SqlCipherHelper.generateConversationId(currentUsername, username);
             
             LOGGER.info("Loading history for conversation: " + username);
@@ -57,9 +63,11 @@ public class PersistentChatLoader {
             
             // Populate ObservableList on JavaFX thread
             javafx.application.Platform.runLater(() -> {
-                messagesObservableList.clear();
-                messagesObservableList.addAll(messages);
-                LOGGER.fine("Loaded " + messages.size() + " messages into RAM for: " + username);
+                // Double-check to prevent race conditions
+                if (messagesObservableList.isEmpty() && !messages.isEmpty()) {
+                    messagesObservableList.addAll(messages);
+                    LOGGER.fine("Loaded " + messages.size() + " messages into RAM for: " + username);
+                }
             });
             
             return messages.size();
@@ -85,6 +93,12 @@ public class PersistentChatLoader {
                 String remoteUsername = entry.getKey();
                 ObservableList<Message> messagesList = entry.getValue();
                 
+                // Skip if already loaded
+                if (!messagesList.isEmpty()) {
+                    totalLoaded += messagesList.size();
+                    continue;
+                }
+                
                 String conversationId = SqlCipherHelper.generateConversationId(
                     currentUsername, remoteUsername);
                 
@@ -92,8 +106,9 @@ public class PersistentChatLoader {
                 
                 final int count = messages.size();
                 javafx.application.Platform.runLater(() -> {
-                    messagesList.clear();
-                    messagesList.addAll(messages);
+                    if (messagesList.isEmpty() && !messages.isEmpty()) {
+                        messagesList.addAll(messages);
+                    }
                 });
                 
                 totalLoaded += count;

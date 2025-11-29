@@ -1,5 +1,8 @@
 package com.saferoom.storage;
 
+import com.saferoom.gui.search.SearchHit;
+
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -14,8 +17,9 @@ import java.util.logging.Logger;
  * Features:
  * - Fast full-text search across all messages
  * - Ranked results (BM25 algorithm)
- * - Highlight support
+ * - Highlight support with snippets
  * - Conversation filtering
+ * - WhatsApp-style search panel support
  * 
  * Usage:
  * - Search globally or within a conversation
@@ -24,10 +28,42 @@ import java.util.logging.Logger;
 public class FTS5SearchService {
     
     private static final Logger LOGGER = Logger.getLogger(FTS5SearchService.class.getName());
-    private final LocalDatabase database;
+    private LocalDatabase database;
+    private Connection connection;
     
+    /**
+     * Constructor with LocalDatabase
+     */
     public FTS5SearchService(LocalDatabase database) {
         this.database = database;
+        this.connection = database.getConnection();
+    }
+    
+    /**
+     * Default constructor for lazy initialization
+     */
+    public FTS5SearchService() {
+        // Will be initialized later via initialize()
+    }
+    
+    /**
+     * Initialize with a connection
+     */
+    public void initialize(Connection conn) {
+        this.connection = conn;
+    }
+    
+    /**
+     * Get the active connection
+     */
+    private Connection getConnection() {
+        if (connection != null) {
+            return connection;
+        }
+        if (database != null) {
+            return database.getConnection();
+        }
+        throw new IllegalStateException("FTS5SearchService not initialized");
     }
     
     /**
@@ -80,7 +116,7 @@ public class FTS5SearchService {
         
         List<SearchResult> results = new ArrayList<>();
         
-        try (PreparedStatement stmt = database.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, query);
             stmt.setInt(2, limit);
             
@@ -132,7 +168,7 @@ public class FTS5SearchService {
         
         List<SearchResult> results = new ArrayList<>();
         
-        try (PreparedStatement stmt = database.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, query);
             stmt.setString(2, conversationId);
             stmt.setInt(3, limit);
@@ -179,7 +215,7 @@ public class FTS5SearchService {
         
         List<String> messageIds = new ArrayList<>();
         
-        try (PreparedStatement stmt = database.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, query);
             stmt.setString(2, conversationId);
             
@@ -213,7 +249,7 @@ public class FTS5SearchService {
             AND m.id = ?
             """;
         
-        try (PreparedStatement stmt = database.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, query);
             stmt.setString(2, messageId);
             
@@ -252,7 +288,7 @@ public class FTS5SearchService {
                 """;
         }
         
-        try (PreparedStatement stmt = database.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setString(1, query);
             if (conversationId != null) {
                 stmt.setString(2, conversationId);
@@ -275,13 +311,217 @@ public class FTS5SearchService {
      * Optimize FTS index (run periodically for performance)
      */
     public void optimizeIndex() {
-        try (PreparedStatement stmt = database.getConnection().prepareStatement(
+        try (PreparedStatement stmt = getConnection().prepareStatement(
                 "INSERT INTO messages_fts(messages_fts) VALUES('optimize')")) {
             stmt.execute();
             LOGGER.info("FTS5 index optimized");
         } catch (SQLException e) {
             LOGGER.log(Level.WARNING, "Failed to optimize FTS index", e);
         }
+    }
+    
+    /**
+     * Search with snippets for WhatsApp-style search panel
+     * Returns SearchHit objects with highlighted text
+     * 
+     * @param conversationId Conversation to search in
+     * @param query Search query
+     * @param currentUsername Current user (to determine outgoing status)
+     * @return List of SearchHit results with snippets
+     */
+    public List<SearchHit> searchWithSnippets(String conversationId, String query, String currentUsername) {
+        // Escape special FTS5 characters and prepare query
+        String sanitizedQuery = sanitizeQuery(query);
+        
+        String sql = """
+            SELECT 
+                m.id,
+                m.timestamp,
+                m.content,
+                m.sender_id,
+                m.is_outgoing,
+                snippet(messages_fts, 0, '<b>', '</b>', '...', 40) as snippet
+            FROM messages_fts fts
+            JOIN messages m ON m.rowid = fts.rowid
+            WHERE messages_fts MATCH ? 
+            AND m.conversation_id = ?
+            ORDER BY m.timestamp DESC
+            LIMIT 50
+            """;
+        
+        List<SearchHit> results = new ArrayList<>();
+        
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setString(1, sanitizedQuery);
+            stmt.setString(2, conversationId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String messageId = rs.getString("id");
+                    long timestamp = rs.getLong("timestamp");
+                    String content = rs.getString("content");
+                    String snippet = rs.getString("snippet");
+                    boolean isOutgoing = rs.getInt("is_outgoing") == 1;
+                    
+                    // Use snippet if available, otherwise use content
+                    String displayText = (snippet != null && !snippet.isEmpty()) ? snippet : content;
+                    
+                    // Decrypt content if needed (content might be encrypted)
+                    String decryptedContent = decryptIfNeeded(content);
+                    String decryptedSnippet = (snippet != null) ? snippet : decryptedContent;
+                    
+                    // If snippet doesn't have highlights, add them manually
+                    if (!decryptedSnippet.contains("<b>")) {
+                        decryptedSnippet = highlightManually(decryptedContent, query);
+                    }
+                    
+                    SearchHit hit = new SearchHit(
+                        messageId,
+                        timestamp,
+                        decryptedContent,
+                        decryptedSnippet,
+                        isOutgoing
+                    );
+                    results.add(hit);
+                }
+            }
+            
+            LOGGER.info("Search for '" + query + "' in " + conversationId + " returned " + results.size() + " results");
+            
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Search with snippets failed", e);
+            
+            // Fallback: try simple LIKE search if FTS fails
+            return searchWithLikeFallback(conversationId, query, currentUsername);
+        }
+        
+        return results;
+    }
+    
+    /**
+     * Fallback search using LIKE when FTS5 fails
+     */
+    private List<SearchHit> searchWithLikeFallback(String conversationId, String query, String currentUsername) {
+        String sql = """
+            SELECT 
+                id,
+                timestamp,
+                content,
+                sender_id,
+                is_outgoing
+            FROM messages
+            WHERE conversation_id = ?
+            AND content LIKE ?
+            ORDER BY timestamp DESC
+            LIMIT 50
+            """;
+        
+        List<SearchHit> results = new ArrayList<>();
+        
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setString(1, conversationId);
+            stmt.setString(2, "%" + query + "%");
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String messageId = rs.getString("id");
+                    long timestamp = rs.getLong("timestamp");
+                    String content = rs.getString("content");
+                    boolean isOutgoing = rs.getInt("is_outgoing") == 1;
+                    
+                    String decryptedContent = decryptIfNeeded(content);
+                    String highlighted = highlightManually(decryptedContent, query);
+                    
+                    SearchHit hit = new SearchHit(
+                        messageId,
+                        timestamp,
+                        decryptedContent,
+                        highlighted,
+                        isOutgoing
+                    );
+                    results.add(hit);
+                }
+            }
+            
+            LOGGER.info("Fallback LIKE search returned " + results.size() + " results");
+            
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Fallback search also failed", e);
+        }
+        
+        return results;
+    }
+    
+    /**
+     * Sanitize query for FTS5 (escape special characters)
+     */
+    private String sanitizeQuery(String query) {
+        if (query == null || query.isEmpty()) {
+            return "";
+        }
+        
+        // For simple searches, wrap in quotes for phrase matching
+        // Remove special FTS5 operators for safety
+        String sanitized = query.trim()
+            .replace("\"", "")
+            .replace("*", "")
+            .replace("-", " ")
+            .replace("OR", "or")
+            .replace("AND", "and")
+            .replace("NOT", "not");
+        
+        // Use prefix matching for partial word matches
+        if (!sanitized.contains(" ")) {
+            return "\"" + sanitized + "\"*";
+        }
+        
+        return "\"" + sanitized + "\"";
+    }
+    
+    /**
+     * Decrypt content if it's encrypted
+     */
+    private String decryptIfNeeded(String content) {
+        if (content == null) return "";
+        
+        // Check if content looks encrypted (hex string or base64)
+        // For now, just return as-is since we store plain text
+        // In production, integrate with SqlCipherHelper.decrypt()
+        return content;
+    }
+    
+    /**
+     * Manually add highlight tags around matched text
+     */
+    private String highlightManually(String text, String query) {
+        if (text == null || query == null || text.isEmpty() || query.isEmpty()) {
+            return text;
+        }
+        
+        // Case-insensitive replacement
+        String lowerText = text.toLowerCase();
+        String lowerQuery = query.toLowerCase().trim();
+        
+        StringBuilder result = new StringBuilder();
+        int lastEnd = 0;
+        int index = lowerText.indexOf(lowerQuery);
+        
+        while (index >= 0) {
+            // Add text before match
+            result.append(text.substring(lastEnd, index));
+            // Add highlighted match (preserve original case)
+            result.append("<b>");
+            result.append(text.substring(index, index + lowerQuery.length()));
+            result.append("</b>");
+            
+            lastEnd = index + lowerQuery.length();
+            index = lowerText.indexOf(lowerQuery, lastEnd);
+        }
+        
+        // Add remaining text
+        result.append(text.substring(lastEnd));
+        
+        return result.toString();
     }
 }
 

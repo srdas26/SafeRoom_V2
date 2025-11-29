@@ -1,0 +1,221 @@
+/**
+ * WhatsApp Web Style Message Search Panel
+ * Dark theme with green accents
+ */
+
+/* ===== MAIN PANEL ===== */
+.search-panel {
+    -fx-background-color: #111b21;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 25, 0, -8, 0);
+    -fx-border-color: #2a3942;
+    -fx-border-width: 0 0 0 1;
+}
+
+/* ===== HEADER ===== */
+.search-header {
+    -fx-background-color: #202c33;
+    -fx-padding: 15 15 15 15;
+    -fx-border-color: #2a3942;
+    -fx-border-width: 0 0 1 0;
+}
+
+.search-title {
+    -fx-text-fill: #e9edef;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.search-close-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8696a0;
+    -fx-font-size: 18px;
+    -fx-padding: 5 10;
+    -fx-cursor: hand;
+    -fx-background-radius: 50%;
+}
+
+.search-close-button:hover {
+    -fx-background-color: rgba(134, 150, 160, 0.2);
+    -fx-text-fill: #e9edef;
+}
+
+/* ===== SEARCH BAR CONTAINER ===== */
+.search-bar-container {
+    -fx-background-color: #111b21;
+    -fx-padding: 10 15 15 15;
+}
+
+.search-bar {
+    -fx-background-color: #202c33;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+    -fx-border-color: transparent;
+    -fx-border-radius: 8;
+}
+
+.search-bar:focused-within {
+    -fx-border-color: #00a884;
+    -fx-border-width: 1;
+}
+
+.search-icon {
+    -fx-text-fill: #8696a0;
+    -fx-font-size: 14px;
+}
+
+.search-input {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e9edef;
+    -fx-prompt-text-fill: #8696a0;
+    -fx-font-size: 14px;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+}
+
+.search-input:focused {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.search-clear-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8696a0;
+    -fx-font-size: 12px;
+    -fx-padding: 2 6;
+    -fx-cursor: hand;
+}
+
+.search-clear-button:hover {
+    -fx-text-fill: #e9edef;
+}
+
+/* ===== STATUS LABEL ===== */
+.search-status {
+    -fx-text-fill: #8696a0;
+    -fx-font-size: 14px;
+    -fx-text-alignment: center;
+    -fx-alignment: center;
+}
+
+/* ===== RESULTS LIST ===== */
+.search-results-list {
+    -fx-background-color: #111b21;
+    -fx-padding: 0;
+}
+
+.search-results-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.search-results-list .list-cell:filled:selected {
+    -fx-background-color: #2a3942;
+}
+
+.search-results-list .scroll-bar:vertical {
+    -fx-background-color: #111b21;
+}
+
+.search-results-list .scroll-bar:vertical .thumb {
+    -fx-background-color: #374248;
+    -fx-background-radius: 4;
+}
+
+.search-results-list .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #4a5c66;
+}
+
+/* ===== RESULT ITEM ===== */
+.search-result-item {
+    -fx-background-color: transparent;
+    -fx-padding: 12 15;
+    -fx-border-color: #2a3942;
+    -fx-border-width: 0 0 1 0;
+    -fx-cursor: hand;
+}
+
+.search-result-item:hover,
+.search-result-hover {
+    -fx-background-color: #202c33;
+}
+
+.search-result-date {
+    -fx-text-fill: #8696a0;
+    -fx-font-size: 12px;
+}
+
+.search-result-check {
+    -fx-text-fill: #53bdeb;
+    -fx-font-size: 11px;
+}
+
+.search-result-text {
+    -fx-line-spacing: 2;
+}
+
+.search-result-normal {
+    -fx-fill: #e9edef;
+    -fx-font-size: 14px;
+}
+
+.search-result-highlight {
+    -fx-fill: #00a884;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+/* ===== MESSAGE HIGHLIGHT (in chat) ===== */
+.message-highlight {
+    -fx-background-color: rgba(255, 243, 154, 0.3);
+    -fx-border-color: #fff39a;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.message-highlight-fade {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* ===== EMPTY STATE ===== */
+.search-empty-icon {
+    -fx-text-fill: #3b4a54;
+    -fx-font-size: 48px;
+}
+
+.search-empty-text {
+    -fx-text-fill: #8696a0;
+    -fx-font-size: 14px;
+    -fx-text-alignment: center;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+.search-panel .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.search-panel .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.search-panel .scroll-bar:vertical {
+    -fx-pref-width: 6px;
+    -fx-background-color: transparent;
+}
+
+.search-panel .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+
+.search-panel .scroll-bar:vertical .thumb {
+    -fx-background-color: #374248;
+    -fx-background-radius: 3;
+}
+
+.search-panel .scroll-bar:vertical .increment-button,
+.search-panel .scroll-bar:vertical .decrement-button {
+    -fx-pref-height: 0;
+    -fx-opacity: 0;
+}
+

@@ -87,6 +87,9 @@ public class ContactService {
                 }
                 
                 System.out.printf("[ContactService] ✅ Loaded %d friends as contacts%n", friends.size());
+                
+                // 🚀 AUTO-LOAD: Preload message history for ALL conversations at startup
+                preloadAllConversationHistories(friends);
             });
         });
         
@@ -238,5 +241,67 @@ public class ContactService {
      */
     public boolean hasContact(String contactId) {
         return contacts.containsKey(contactId);
+    }
+    
+    /**
+     * 🚀 Preload message history for ALL conversations at app startup
+     * This ensures messages are available immediately when user opens a chat
+     */
+    private void preloadAllConversationHistories(java.util.List<com.saferoom.grpc.SafeRoomProto.FriendInfo> friends) {
+        System.out.println("[ContactService] 🚀 Preloading message history for all conversations...");
+        
+        ChatService chatService = ChatService.getInstance();
+        
+        for (com.saferoom.grpc.SafeRoomProto.FriendInfo friend : friends) {
+            String friendUsername = friend.getUsername();
+            
+            // Load history asynchronously for each friend
+            chatService.loadConversationHistory(friendUsername)
+                .thenAccept(count -> {
+                    if (count > 0) {
+                        System.out.printf("[ContactService] 📂 Preloaded %d messages for: %s%n", count, friendUsername);
+                        
+                        // Update last message in contact list from loaded history
+                        javafx.application.Platform.runLater(() -> {
+                            updateLastMessageFromHistory(friendUsername);
+                        });
+                    }
+                })
+                .exceptionally(error -> {
+                    System.err.printf("[ContactService] ❌ Failed to preload history for %s: %s%n", 
+                        friendUsername, error.getMessage());
+                    return null;
+                });
+        }
+    }
+    
+    /**
+     * Update contact's last message from loaded chat history
+     */
+    private void updateLastMessageFromHistory(String contactId) {
+        ChatService chatService = ChatService.getInstance();
+        javafx.collections.ObservableList<com.saferoom.gui.model.Message> messages = 
+            chatService.getMessagesForChannel(contactId);
+        
+        if (messages != null && !messages.isEmpty()) {
+            // Get the last message
+            com.saferoom.gui.model.Message lastMsg = messages.get(messages.size() - 1);
+            String lastMessageText = lastMsg.getText();
+            
+            // Truncate if too long
+            if (lastMessageText != null && lastMessageText.length() > 30) {
+                lastMessageText = lastMessageText.substring(0, 30) + "...";
+            }
+            
+            // Update contact without incrementing unread (this is history)
+            Contact existingContact = contacts.get(contactId);
+            if (existingContact != null) {
+                addOrUpdateContact(contactId, existingContact.getName(), existingContact.getStatus(), 
+                    lastMessageText, getCurrentTimeString(), existingContact.getUnreadCount(), 
+                    existingContact.isGroup());
+                    
+                System.out.printf("[ContactService] 💬 Updated last message for %s from history%n", contactId);
+            }
+        }
     }
 }

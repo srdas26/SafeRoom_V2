@@ -46,6 +46,9 @@ public class MessageCell extends ListCell<Message> {
     private Label boundStatusLabel;
     private Message boundMessage;
     private ChangeListener<MessageType> typeListener;
+    
+    // Highlight support for search
+    private boolean isHighlighted = false;
 
     public MessageCell(String currentUserId) {
         super();
@@ -53,6 +56,30 @@ public class MessageCell extends ListCell<Message> {
 
         avatar.getStyleClass().add("message-avatar");
         HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        // Add base style class
+        getStyleClass().add("message-cell");
+    }
+    
+    /**
+     * Set highlight state for search results
+     */
+    public void setHighlighted(boolean highlighted) {
+        this.isHighlighted = highlighted;
+        if (highlighted) {
+            if (!getStyleClass().contains("message-highlight")) {
+                getStyleClass().add("message-highlight");
+            }
+        } else {
+            getStyleClass().remove("message-highlight");
+        }
+    }
+    
+    /**
+     * Check if cell is highlighted
+     */
+    public boolean isHighlighted() {
+        return isHighlighted;
     }
 
     @Override
@@ -60,6 +87,11 @@ public class MessageCell extends ListCell<Message> {
         super.updateItem(message, empty);
         unbindFileBindings();
         detachTypeListener();
+        
+        // Clear highlight when cell is reused
+        getStyleClass().remove("message-highlight");
+        isHighlighted = false;
+        
         if (empty || message == null || currentUserId == null) {
             boundMessage = null;
             setGraphic(null);
@@ -82,6 +114,29 @@ public class MessageCell extends ListCell<Message> {
             boundMessage = message;
             attachTypeListener(bubble, message);
             setGraphic(hbox);
+            
+            // Check if this message should be highlighted (for search results)
+            if (isSelected()) {
+                // Apply highlight animation for selected items
+                applyHighlightAnimation(hbox);
+            }
+        }
+    }
+    
+    /**
+     * Apply yellow flash highlight animation for search results
+     */
+    private void applyHighlightAnimation(Node node) {
+        // Add highlight class
+        if (!getStyleClass().contains("message-highlight")) {
+            getStyleClass().add("message-highlight");
+            isHighlighted = true;
+            
+            // Create fade animation
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(200), node);
+            fadeIn.setFromValue(0.7);
+            fadeIn.setToValue(1.0);
+            fadeIn.play();
         }
     }
 
