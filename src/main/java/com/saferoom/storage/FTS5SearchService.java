@@ -363,23 +363,26 @@ public class FTS5SearchService {
                     String snippet = rs.getString("snippet");
                     boolean isOutgoing = rs.getInt("is_outgoing") == 1;
                     
-                    // Use snippet if available, otherwise use content
-                    String displayText = (snippet != null && !snippet.isEmpty()) ? snippet : content;
+                    // Parse JSON content to extract actual message text
+                    String plainText = decryptIfNeeded(content);
                     
-                    // Decrypt content if needed (content might be encrypted)
-                    String decryptedContent = decryptIfNeeded(content);
-                    String decryptedSnippet = (snippet != null) ? snippet : decryptedContent;
+                    // Parse snippet too (it might also be JSON)
+                    String parsedSnippet = decryptIfNeeded(snippet);
                     
                     // If snippet doesn't have highlights, add them manually
-                    if (!decryptedSnippet.contains("<b>")) {
-                        decryptedSnippet = highlightManually(decryptedContent, query);
+                    String highlightedText;
+                    if (parsedSnippet != null && parsedSnippet.contains("<b>")) {
+                        highlightedText = parsedSnippet;
+                    } else {
+                        // Manually highlight the query in plain text
+                        highlightedText = highlightManually(plainText, query);
                     }
                     
                     SearchHit hit = new SearchHit(
                         messageId,
                         timestamp,
-                        decryptedContent,
-                        decryptedSnippet,
+                        plainText,
+                        highlightedText,
                         isOutgoing
                     );
                     results.add(hit);
@@ -479,15 +482,77 @@ public class FTS5SearchService {
     }
     
     /**
-     * Decrypt content if it's encrypted
+     * Parse content - extract text from JSON format if needed
+     * JSON format: {"text":"message text","mime":"text/plain"}
      */
     private String decryptIfNeeded(String content) {
-        if (content == null) return "";
+        if (content == null || content.isEmpty()) return "";
         
-        // Check if content looks encrypted (hex string or base64)
-        // For now, just return as-is since we store plain text
-        // In production, integrate with SqlCipherHelper.decrypt()
+        // Check if content is JSON format
+        String trimmed = content.trim();
+        if (trimmed.startsWith("{") && trimmed.contains("\"text\"")) {
+            try {
+                // Simple JSON extraction without external library
+                // Format: {"text":"actual message","mime":"text/plain"}
+                int textStart = trimmed.indexOf("\"text\"");
+                if (textStart >= 0) {
+                    int colonPos = trimmed.indexOf(":", textStart);
+                    if (colonPos >= 0) {
+                        // Find the opening quote after colon
+                        int openQuote = trimmed.indexOf("\"", colonPos + 1);
+                        if (openQuote >= 0) {
+                            // Find closing quote (handle escaped quotes)
+                            int closeQuote = findClosingQuote(trimmed, openQuote + 1);
+                            if (closeQuote > openQuote) {
+                                String extracted = trimmed.substring(openQuote + 1, closeQuote);
+                                // Unescape JSON string
+                                return unescapeJson(extracted);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.fine("Failed to parse JSON content: " + e.getMessage());
+            }
+        }
+        
+        // Return as-is if not JSON
         return content;
+    }
+    
+    /**
+     * Find closing quote position, handling escaped quotes
+     */
+    private int findClosingQuote(String text, int startPos) {
+        boolean escaped = false;
+        for (int i = startPos; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+            if (c == '"') {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Unescape JSON string (handle \n, \t, \", etc.)
+     */
+    private String unescapeJson(String text) {
+        if (text == null) return "";
+        return text
+            .replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace("\\r", "\r")
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\");
     }
     
     /**

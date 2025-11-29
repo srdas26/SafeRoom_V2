@@ -587,6 +587,11 @@ public class ChatViewController {
      * Show WhatsApp-style search panel with slide-in animation
      */
     private void showSearchPanel() {
+        // Close Contact Info sidebar first (search panel replaces it)
+        if (userInfoSidebar != null && userInfoSidebar.isVisible()) {
+            hideUserInfoSidebar();
+        }
+        
         // Initialize search panel if needed
         if (searchPanel == null) {
             initializeSearchPanel();
@@ -600,6 +605,18 @@ public class ChatViewController {
         
         // Show the panel
         searchPanel.show(conversationId, chatService.getCurrentUsername());
+    }
+    
+    /**
+     * Hide user info sidebar with animation
+     */
+    private void hideUserInfoSidebar() {
+        if (userInfoSidebar != null) {
+            TranslateTransition slideOut = new TranslateTransition(Duration.millis(200), userInfoSidebar);
+            slideOut.setToX(userInfoSidebar.getWidth());
+            slideOut.setOnFinished(e -> userInfoSidebar.setVisible(false));
+            slideOut.play();
+        }
     }
     
     /**

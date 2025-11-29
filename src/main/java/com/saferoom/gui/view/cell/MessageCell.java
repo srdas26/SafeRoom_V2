@@ -46,7 +46,7 @@ public class MessageCell extends ListCell<Message> {
     private Label boundStatusLabel;
     private Message boundMessage;
     private ChangeListener<MessageType> typeListener;
-    
+
     // Highlight support for search
     private boolean isHighlighted = false;
 
