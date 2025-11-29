@@ -174,7 +174,7 @@
    ================================================================= */
 .sidebar {
   -fx-background-color: #0f172a;
-  -fx-background-radius: 12px 0px 0px 12px; /* Rounded corners on left side only */
+  -fx-background-radius: 0px 0px 0px 0px; /* Rounded corners on left side only */
 }
 .sidebar-header {
   -fx-border-color: #334155;
@@ -294,8 +294,8 @@
 .header-bar {
   -fx-background-color: #0f172a;
   -fx-border-color: #334155;
-  -fx-border-width: 0 0 1px 0;
-  -fx-background-radius: 0px 12px 0px 0px; /* Rounded corner on top-right only */
+  -fx-border-width: 0 0 0px 0;
+  -fx-background-radius: 12px 12px 0px 0px; /* Rounded corner on top-right only */
 }
 .view-title {
   -fx-font-size: 20px;
@@ -5144,49 +5144,68 @@
   -fx-cursor: default;
 }
 
-/* =================================================================
-   MACOS WINDOW CONTROLS (TRAFFIC LIGHTS)
-   ================================================================= */
+/* ========================================
+   macOS Window Control Buttons
+   ======================================== */
 
-/* Mac modunda container ayarları */
-.mac-window-controls {
-  -fx-spacing: 8px; /* Daireler arası boşluk */
-  -fx-padding: 0px 0 0 0; /* Üstten boşluk bırakarak ortala */
-  -fx-alignment: CENTER; /* Kutunun içinde ortala */
+/* macOS buton container */
+.window-controls-left {
+  -fx-spacing: 8;
+  -fx-padding: 0 0 0 12;
 }
 
-/* Mac modunda butonların genel yapısı */
-.mac-window-controls .window-control-button {
-  -fx-background-radius: 50%;
-  -fx-min-width: 12px;
-  -fx-min-height: 12px;
-  -fx-pref-width: 12px;
-  -fx-pref-height: 12px;
-  -fx-max-width: 12px;
-  -fx-max-height: 12px;
+/* macOS buton base style */
+.window-control-button-mac {
+  -fx-background-color: transparent;
   -fx-padding: 0;
-  -fx-border-width: 0;
+  -fx-cursor: hand;
+  -fx-pref-width: 12;
+  -fx-pref-height: 12;
+  -fx-min-width: 12;
+  -fx-min-height: 12;
+  -fx-max-width: 12;
+  -fx-max-height: 12;
 }
 
-/* ... (İkonlar ve renkler kısmı aynı kalabilir) ... */
-.mac-window-controls .window-control-button .ikonli-font-icon {
-  -fx-opacity: 0;
-  -fx-icon-size: 8px;
-  -fx-icon-color: #4b1e1e;
+.window-control-button-mac:hover {
+  -fx-opacity: 0.8;
 }
 
-.mac-window-controls:hover .window-control-button .ikonli-font-icon {
+.window-control-button-mac:pressed {
   -fx-opacity: 0.6;
 }
 
-.mac-window-controls .close-button { -fx-background-color: #ff5f56; }
-.mac-window-controls .close-button:hover { -fx-background-color: #ff5f56; }
-.mac-window-controls .close-button:pressed { -fx-background-color: #bf4c45; }
+/* macOS buton renkleri (macOS tarzı yuvarlak butonlar) */
+.mac-button-close {
+  -fx-background-color: #FF5F57;
+  -fx-background-radius: 50%;
+  -fx-pref-width: 12;
+  -fx-pref-height: 12;
+}
 
-.mac-window-controls .minimize-button { -fx-background-color: #ffbd2e; }
-.mac-window-controls .minimize-button:hover { -fx-background-color: #ffbd2e; }
-.mac-window-controls .minimize-button:pressed { -fx-background-color: #bf8e22; }
+.mac-button-minimize {
+  -fx-background-color: #FFBD2E;
+  -fx-background-radius: 50%;
+  -fx-pref-width: 12;
+  -fx-pref-height: 12;
+}
 
-.mac-window-controls .maximize-button { -fx-background-color: #27c93f; }
-.mac-window-controls .maximize-button:hover { -fx-background-color: #27c93f; }
-.mac-window-controls .maximize-button:pressed { -fx-background-color: #1d9730; }
+.mac-button-maximize {
+  -fx-background-color: #28CA42;
+  -fx-background-radius: 50%;
+  -fx-pref-width: 12;
+  -fx-pref-height: 12;
+}
+
+/* Hover efektleri - macOS'ta butonların içinde simge belirir */
+.close-button-mac:hover .mac-button-close {
+  -fx-background-color: linear-gradient(to bottom, #FF5F57 0%, #E0443E 100%);
+}
+
+.minimize-button-mac:hover .mac-button-minimize {
+  -fx-background-color: linear-gradient(to bottom, #FFBD2E 0%, #E5A120 100%);
+}
+
+.maximize-button-mac:hover .mac-button-maximize {
+  -fx-background-color: linear-gradient(to bottom, #28CA42 0%, #1FA832 100%);
+}

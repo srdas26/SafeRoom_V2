@@ -24,10 +24,65 @@
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.saferoom.gui.controller.MainController">
 
+    <!-- ÜST BAR - Tüm pencereyi kaplasın -->
+    <top>
+        <BorderPane fx:id="headerBar" prefHeight="32.0" styleClass="header-bar">
+            <!-- Sol taraf: macOS için window controls buraya yerleştirilecek (dinamik) -->
+            <left>
+                <HBox fx:id="windowControlsLeft" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+                    <padding>
+                        <Insets left="12.0" />
+                    </padding>
+                    <children>
+                        <JFXButton fx:id="closeButtonMac" styleClass="window-control-button-mac, close-button-mac" text="">
+                            <graphic>
+                                <Region styleClass="mac-button-close" />
+                            </graphic>
+                        </JFXButton>
+                        <JFXButton fx:id="minimizeButtonMac" styleClass="window-control-button-mac, minimize-button-mac" text="">
+                            <graphic>
+                                <Region styleClass="mac-button-minimize" />
+                            </graphic>
+                        </JFXButton>
+                        <JFXButton fx:id="maximizeButtonMac" styleClass="window-control-button-mac, maximize-button-mac" text="">
+                            <graphic>
+                                <Region styleClass="mac-button-maximize" />
+                            </graphic>
+                        </JFXButton>
+                    </children>
+                </HBox>
+            </left>
+
+            <!-- Sağ taraf: Windows için window controls -->
+            <right>
+                <HBox fx:id="windowControlsRight" alignment="CENTER" spacing="0" styleClass="window-controls">
+                    <children>
+                        <JFXButton fx:id="minimizeButton" styleClass="window-control-button, minimize-button" text="">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-minus" styleClass="window-control-icon" />
+                            </graphic>
+                        </JFXButton>
+                        <JFXButton fx:id="maximizeButton" styleClass="window-control-button, maximize-button" text="">
+                            <graphic>
+                                <FontIcon iconLiteral="far-square" styleClass="window-control-icon" />
+                            </graphic>
+                        </JFXButton>
+                        <JFXButton fx:id="closeButton" styleClass="window-control-button, close-button" text="">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-times" styleClass="window-control-icon" />
+                            </graphic>
+                        </JFXButton>
+                    </children>
+                </HBox>
+            </right>
+        </BorderPane>
+    </top>
+
     <left>
         <VBox styleClass="sidebar, sidebar-minimal">
             <children>
-                <HBox fx:id="sidebarHeader" alignment="CENTER" prefHeight="45.0" styleClass="sidebar-header-minimal">
+                <!-- Sidebar header - artık burada window controls olmayacak -->
+                <HBox fx:id="sidebarHeader" alignment="CENTER" prefHeight="32.0" styleClass="sidebar-header-minimal">
                 </HBox>
 
                 <VBox fx:id="navBox" alignment="CENTER" spacing="16" VBox.vgrow="ALWAYS">
@@ -80,46 +135,13 @@
     </left>
 
     <center>
-        <BorderPane styleClass="content-pane" maxWidth="Infinity" maxHeight="Infinity">
-            <top>
-                <BorderPane fx:id="headerBar" prefHeight="32.0" styleClass="header-bar">
-                    <right>
-                        <HBox fx:id="windowControls" alignment="CENTER" spacing="0" styleClass="window-controls">
-                            <children>
-                                <JFXButton fx:id="minimizeButton" styleClass="window-control-button, minimize-button" text="">
-                                    <graphic>
-                                        <FontIcon iconLiteral="fas-minus" styleClass="window-control-icon" />
-                                    </graphic>
-                                </JFXButton>
-                                <JFXButton fx:id="maximizeButton" styleClass="window-control-button, maximize-button" text="">
-                                    <graphic>
-                                        <FontIcon iconLiteral="far-square" styleClass="window-control-icon" />
-                                    </graphic>
-                                </JFXButton>
-                                <JFXButton fx:id="closeButton" styleClass="window-control-button, close-button" text="">
-                                    <graphic>
-                                        <FontIcon iconLiteral="fas-times" styleClass="window-control-icon" />
-                                    </graphic>
-                                </JFXButton>
-                            </children>
-                        </HBox>
-                    </right>
-                    <padding>
-                        <Insets left="32.0" right="4.0" />
-                    </padding>
-                </BorderPane>
-            </top>
-            <center>
-                <AnchorPane>
-                    <StackPane fx:id="contentArea"
-                               styleClass="content-scroll-pane"
-                               AnchorPane.bottomAnchor="0.0"
-                               AnchorPane.leftAnchor="0.0"
-                               AnchorPane.rightAnchor="0.0"
-                               AnchorPane.topAnchor="0.0" />
-                </AnchorPane>
-            </center>
-
-        </BorderPane>
+        <AnchorPane styleClass="content-pane" maxWidth="Infinity" maxHeight="Infinity">
+            <StackPane fx:id="contentArea"
+                       styleClass="content-scroll-pane"
+                       AnchorPane.bottomAnchor="0.0"
+                       AnchorPane.leftAnchor="0.0"
+                       AnchorPane.rightAnchor="0.0"
+                       AnchorPane.topAnchor="0.0" />
+        </AnchorPane>
     </center>
 </BorderPane>

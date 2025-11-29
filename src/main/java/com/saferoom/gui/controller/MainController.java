@@ -46,7 +46,9 @@ public class MainController {
     @FXML
     private BorderPane headerBar;
     @FXML
-    private HBox windowControls;
+    private HBox windowControlsLeft;    // macOS için sol taraf
+    @FXML
+    private HBox windowControlsRight;   // Windows için sağ taraf
     @FXML
     private HBox sidebarHeader;
     // ------------------------------------------------------------
@@ -76,13 +78,21 @@ public class MainController {
     @FXML
     private Region statusDot;
 
-    // Window control buttons
+    // Window control buttons - Windows
     @FXML
     private JFXButton minimizeButton;
     @FXML
     private JFXButton maximizeButton;
     @FXML
     private JFXButton closeButton;
+
+    // Window control buttons - macOS
+    @FXML
+    private JFXButton closeButtonMac;
+    @FXML
+    private JFXButton minimizeButtonMac;
+    @FXML
+    private JFXButton maximizeButtonMac;
 
     private ActiveCallDialog currentActiveCallDialog;
 
@@ -131,10 +141,8 @@ public class MainController {
         fileVaultButton.setOnAction(event -> handleFileVault());
         notificationsButton.setOnAction(event -> System.out.println("Notifications clicked!"));
 
-        // Window control button events
-        minimizeButton.setOnAction(event -> handleMinimize());
-        maximizeButton.setOnAction(event -> handleMaximize());
-        closeButton.setOnAction(event -> handleClose());
+        // Pencere Kontrollerini Özelleştir (Mac vs Windows)
+        customizeWindowControls();
 
         // Window drag functionality
         windowStateManager.setupWindowDrag(mainPane);
@@ -190,9 +198,6 @@ public class MainController {
             });
         }
 
-        // Pencere Kontrollerini Özelleştir (Mac vs Windows)
-        customizeWindowControls();
-
         // Başlangıçta Dashboard'u yükle
         handleDashboard();
 
@@ -212,14 +217,52 @@ public class MainController {
         boolean isMacOS = osName.contains("mac");
 
         if (isMacOS) {
-            if (headerBar != null && windowControls != null && sidebarHeader != null) {
-                headerBar.setRight(null);
-                headerBar.setLeft(null);
-                windowControls.getChildren().clear();
-                windowControls.getChildren().addAll(closeButton, minimizeButton, maximizeButton);
-                sidebarHeader.getChildren().add(windowControls);
-                windowControls.getStyleClass().add("mac-window-controls");
-                sidebarHeader.setAlignment(Pos.CENTER);
+            // macOS: Sol taraftaki butonları göster, sağ taraftakileri gizle
+            if (windowControlsLeft != null) {
+                windowControlsLeft.setVisible(true);
+                windowControlsLeft.setManaged(true);
+            }
+            if (windowControlsRight != null) {
+                windowControlsRight.setVisible(false);
+                windowControlsRight.setManaged(false);
+            }
+
+            // macOS butonlarına event handlers ekle
+            if (closeButtonMac != null) {
+                closeButtonMac.setOnAction(event -> handleClose());
+            }
+            if (minimizeButtonMac != null) {
+                minimizeButtonMac.setOnAction(event -> handleMinimize());
+            }
+            if (maximizeButtonMac != null) {
+                maximizeButtonMac.setOnAction(event -> handleMaximize());
+            }
+
+            // Sidebar header'ı temizle (artık buraya hiçbir şey eklenmeyecek)
+            if (sidebarHeader != null) {
+                sidebarHeader.getChildren().clear();
+            }
+
+        } else {
+            // Windows/Linux: Sağ taraftaki butonları göster, sol taraftakileri gizle
+            if (windowControlsRight != null) {
+                windowControlsRight.setVisible(true);
+                windowControlsRight.setManaged(true);
+            }
+            if (windowControlsLeft != null) {
+                windowControlsLeft.setVisible(false);
+                windowControlsLeft.setManaged(false);
+            }
+
+            // Windows butonlarına event handlers ekle
+            if (minimizeButton != null) {
+                minimizeButton.setOnAction(event -> handleMinimize());
+            }
+            if (maximizeButton != null) {
+                maximizeButton.setOnAction(event -> handleMaximize());
+            }
+            if (closeButton != null) {
+                closeButton.setOnAction(event -> handleClose());
             }
         }
     }
@@ -481,13 +524,15 @@ public class MainController {
         if (isMacOS || isLinux) {
             if (stage.isFullScreen()) {
                 MacOSFullscreenHandler.handleMacOSFullscreen(stage, false);
-                if (maximizeButton != null && maximizeButton.getGraphic() instanceof FontIcon) {
-                    ((FontIcon) maximizeButton.getGraphic()).setIconLiteral("far-square");
+                // macOS butonunun ikonunu güncelle
+                if (maximizeButtonMac != null && maximizeButtonMac.getGraphic() instanceof Region) {
+                    maximizeButtonMac.getGraphic().getStyleClass().removeAll("mac-button-maximize-fullscreen");
                 }
             } else {
                 MacOSFullscreenHandler.handleMacOSFullscreen(stage, true);
-                if (maximizeButton != null && maximizeButton.getGraphic() instanceof FontIcon) {
-                    ((FontIcon) maximizeButton.getGraphic()).setIconLiteral("far-clone");
+                // macOS butonunun ikonunu güncelle
+                if (maximizeButtonMac != null && maximizeButtonMac.getGraphic() instanceof Region) {
+                    maximizeButtonMac.getGraphic().getStyleClass().add("mac-button-maximize-fullscreen");
                 }
             }
         } else {
@@ -520,30 +565,19 @@ public class MainController {
         loadView("RoomsView.fxml");
     }
 
-    // --- DEĞİŞTİRİLEN KISIM: Mesajlar Yüklenirken Callback Atanıyor ---
     public void handleMessages() {
         setActiveButton(messagesButton);
-
-        // Özel yükleme: Controller'a erişip "Arkadaş Ekle" butonu bağlantısını yapmak için
         try {
             FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(MainApp.class.getResource("/view/MessagesView.fxml")));
             Parent root = loader.load();
-
-            // 1. Controller'ı al
             MessagesController messagesController = loader.getController();
-
-            // 2. "Arkadaş Ekle" butonuna basıldığında buradaki handleFriends() metodunu çalıştır
             messagesController.setOnNavigateToFriendsRequest(this::handleFriends);
-
-            // 3. Görüntüyü yerleştir
             contentArea.getChildren().setAll(root);
-
         } catch (IOException | NullPointerException e) {
             e.printStackTrace();
             showErrorInContentArea("MessagesView.fxml yüklenemedi: " + e.getMessage());
         }
     }
-    // ------------------------------------------------------------------
 
     public void handleFriends() {
         setActiveButton(friendsButton);
