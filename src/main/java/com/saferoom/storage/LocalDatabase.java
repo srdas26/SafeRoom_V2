@@ -5,18 +5,22 @@ import java.sql.*;
 import java.util.logging.Logger;
 
 /**
- * SQLite Database with SQLCipher encryption
+ * SQLite Database with Application-level AES-256 encryption
  * 
  * Architecture:
- * - Single encrypted database file per user
- * - AES-256 encryption via SQLCipher
+ * - Single database file per user
+ * - Content-level encryption (encrypt data before storing)
+ * - Pure Java implementation (no native dependencies)
  * - Full-Text Search (FTS5) support
  * - Auto-migration and schema versioning
  * 
  * Tables:
- * - messages: Main message storage
+ * - messages: Main message storage (encrypted content)
  * - messages_fts: Full-text search virtual table
  * - conversations: Conversation metadata
+ * 
+ * Note: Since we're not using SQLCipher native extension,
+ * we encrypt the message content at application level using BouncyCastle AES-256.
  */
 public class LocalDatabase {
     
@@ -48,6 +52,12 @@ public class LocalDatabase {
             instance.close();
         }
         
+        // Create data directory if not exists
+        File dataDir = new File(userDataDir);
+        if (!dataDir.exists()) {
+            dataDir.mkdirs();
+        }
+        
         String key = SqlCipherHelper.deriveKey(username, password);
         instance = new LocalDatabase(userDataDir, key);
         instance.open();
@@ -65,6 +75,13 @@ public class LocalDatabase {
     }
     
     /**
+     * Get encryption key for content encryption
+     */
+    public String getEncryptionKey() {
+        return encryptionKey;
+    }
+    
+    /**
      * Open database connection and initialize schema
      */
     private void open() {
@@ -76,21 +93,17 @@ public class LocalDatabase {
             String url = "jdbc:sqlite:" + dbPath;
             connection = DriverManager.getConnection(url);
             
-            // Enable SQLCipher encryption
+            // Configure SQLite for performance
             try (Statement stmt = connection.createStatement()) {
-                // Set encryption key
-                stmt.execute("PRAGMA key = \"x'" + encryptionKey + "'\"");
-                
-                // Verify encryption is working
-                stmt.execute("PRAGMA cipher_version");
-                
                 // Performance optimizations
                 stmt.execute("PRAGMA journal_mode = WAL");
                 stmt.execute("PRAGMA synchronous = NORMAL");
                 stmt.execute("PRAGMA temp_store = MEMORY");
                 stmt.execute("PRAGMA mmap_size = 30000000000");
+                stmt.execute("PRAGMA cache_size = -64000"); // 64MB cache
                 
-                LOGGER.info("Database opened successfully with encryption");
+                LOGGER.info("Database opened successfully at: " + dbPath);
+                LOGGER.info("Encryption: Content-level AES-256 (BouncyCastle)");
             }
             
             // Initialize schema
