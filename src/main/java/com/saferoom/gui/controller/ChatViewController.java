@@ -362,21 +362,31 @@ public class ChatViewController {
         
         try {
             LocalMessageRepository repository = LocalMessageRepository.getInstance();
-            String conversationId = SqlCipherHelper.generateConversationId(
-                chatService.getCurrentUsername(), channelId);
+            String currentUser = chatService.getCurrentUsername();
+            String conversationId = SqlCipherHelper.generateConversationId(currentUser, channelId);
+            
+            System.out.printf("[SharedMedia] 📂 Loading media for conversation: %s <-> %s%n", currentUser, channelId);
+            System.out.printf("[SharedMedia] 📂 Conversation ID (hash): %s%n", conversationId.substring(0, 16) + "...");
             
             repository.loadMediaMessagesAsync(conversationId)
                 .thenAccept(mediaMessages -> {
+                    System.out.printf("[SharedMedia] ✅ Found %d media files for %s%n", mediaMessages.size(), channelId);
+                    for (Message msg : mediaMessages) {
+                        if (msg.getAttachment() != null) {
+                            System.out.printf("[SharedMedia]    - %s (%s)%n", 
+                                msg.getAttachment().getFileName(), msg.getType());
+                        }
+                    }
                     Platform.runLater(() -> {
                         updateSharedMediaUI(mediaMessages);
                     });
                 })
                 .exceptionally(error -> {
-                    System.err.println("[ChatView] Failed to load shared media: " + error.getMessage());
+                    System.err.println("[SharedMedia] ❌ Failed to load: " + error.getMessage());
                     return null;
                 });
         } catch (Exception e) {
-            System.err.println("[ChatView] Error loading shared media: " + e.getMessage());
+            System.err.println("[SharedMedia] ❌ Error: " + e.getMessage());
         }
     }
     
