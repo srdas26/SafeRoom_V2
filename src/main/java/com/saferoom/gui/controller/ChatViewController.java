@@ -452,28 +452,36 @@ public class ChatViewController {
                     }
                 }
                 
+                // CRITICAL: Prevent focus stealing on first click
+                placeholder.setFocusTraversable(false);
+                placeholder.setPickOnBounds(true);
+                
                 if (thumbnail != null) {
                     ImageView imageView = new ImageView(thumbnail);
                     imageView.setFitWidth(80);
                     imageView.setFitHeight(80);
                     imageView.setPreserveRatio(true);
                     imageView.setStyle("-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);");
+                    imageView.setMouseTransparent(true);  // Let clicks pass through to parent
                     
                     placeholder.getChildren().add(imageView);
                     placeholder.setStyle("-fx-background-color: transparent; -fx-background-radius: 8; -fx-cursor: hand;");
-                    
-                    // Click to open file - use same logic as MessageCell
-                    final FileAttachment finalAttachment = attachment;
-                    placeholder.setOnMouseClicked(e -> openSharedMediaFile(finalAttachment));
                 } else {
                     // Show file type icon instead (with filename for accurate icon)
                     FontIcon icon = getFileTypeIcon(attachment.getTargetType(), attachment.getFileName());
+                    icon.setMouseTransparent(true);  // Let clicks pass through to parent
                     placeholder.getChildren().add(icon);
                     placeholder.setStyle("-fx-background-color: #2a2d31; -fx-background-radius: 8; -fx-cursor: hand;");
-                    
-                    final FileAttachment finalAttachment = attachment;
-                    placeholder.setOnMouseClicked(e -> openSharedMediaFile(finalAttachment));
                 }
+                
+                // Use MOUSE_PRESSED for immediate response (same fix as grid items)
+                final FileAttachment finalAttachment = attachment;
+                placeholder.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+                    if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                        e.consume();
+                        openSharedMediaFile(finalAttachment);
+                    }
+                });
             }
         }
         
@@ -687,6 +695,8 @@ public class ChatViewController {
         javafx.scene.control.ScrollPane scrollPane = new javafx.scene.control.ScrollPane(grid);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background: #0f111a; -fx-background-color: #0f111a;");
+        scrollPane.setPannable(false);  // Disable panning to prevent click interference
+        scrollPane.setFocusTraversable(false);  // Don't steal focus
         
         // Header (no close button - use window's X button)
         HBox header = new HBox();
@@ -729,6 +739,10 @@ public class ChatViewController {
         item.setMaxSize(120, 120);
         item.setStyle("-fx-background-color: #1a1d21; -fx-background-radius: 8; -fx-cursor: hand;");
         
+        // CRITICAL: Prevent focus stealing on first click
+        item.setFocusTraversable(false);
+        item.setPickOnBounds(true);  // Ensure clicks are captured even on transparent areas
+        
         // Try to load thumbnail
         Image thumbnail = attachment.getThumbnail();
         
@@ -751,26 +765,40 @@ public class ChatViewController {
             imageView.setFitWidth(120);
             imageView.setFitHeight(120);
             imageView.setPreserveRatio(true);
+            imageView.setMouseTransparent(true);  // Let clicks pass through
             item.getChildren().add(imageView);
         } else {
             // Show file type icon (with filename for accurate icon)
             FontIcon icon = getFileTypeIcon(attachment.getTargetType(), attachment.getFileName());
             icon.setIconSize(36);
+            icon.setMouseTransparent(true);  // Let clicks pass through
             
             Label nameLabel = new Label(truncateFileName(attachment.getFileName(), 15));
             nameLabel.setStyle("-fx-text-fill: #94a1b2; -fx-font-size: 10px;");
+            nameLabel.setMouseTransparent(true);  // Let clicks pass through
             
             VBox content = new VBox(5, icon, nameLabel);
             content.setAlignment(javafx.geometry.Pos.CENTER);
+            content.setMouseTransparent(true);  // Let clicks pass through
             item.getChildren().add(content);
         }
         
         // Hover effect
-        item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: #2a2d31; -fx-background-radius: 8; -fx-cursor: hand;"));
-        item.setOnMouseExited(e -> item.setStyle("-fx-background-color: #1a1d21; -fx-background-radius: 8; -fx-cursor: hand;"));
+        item.setOnMouseEntered(e -> {
+            item.setStyle("-fx-background-color: #2a2d31; -fx-background-radius: 8; -fx-cursor: hand;");
+        });
+        item.setOnMouseExited(e -> {
+            item.setStyle("-fx-background-color: #1a1d21; -fx-background-radius: 8; -fx-cursor: hand;");
+        });
         
-        // Click to open
-        item.setOnMouseClicked(e -> openSharedMediaFile(attachment));
+        // Use MOUSE_PRESSED instead of MOUSE_CLICKED for immediate response
+        // MOUSE_CLICKED fires after MOUSE_RELEASED, which can feel delayed
+        item.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+            if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                e.consume();
+                openSharedMediaFile(attachment);
+            }
+        });
         
         return item;
     }

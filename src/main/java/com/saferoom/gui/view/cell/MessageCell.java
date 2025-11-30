@@ -208,17 +208,33 @@ public class MessageCell extends ListCell<Message> {
 
         StackPane placeholder = new StackPane();
         placeholder.getStyleClass().add("file-generic-thumb");
+        placeholder.setFocusTraversable(false);  // Prevent focus stealing
+        placeholder.setPickOnBounds(true);       // Capture all clicks
+        
         Label symbol = new Label(iconForType(attachment.getTargetType()));
         symbol.getStyleClass().add("file-card-icon");
+        symbol.setMouseTransparent(true);  // Let clicks pass through
         placeholder.getChildren().add(symbol);
+        
         if (message.getType() == MessageType.FILE_PLACEHOLDER) {
             placeholder.getChildren().add(createProgressOverlay(message));
         } else {
             placeholder.getStyleClass().add("interactive-thumb");
+            // Use MOUSE_PRESSED for immediate response
             if (attachment.getTargetType() == MessageType.DOCUMENT && isPdfAttachment(attachment)) {
-                placeholder.setOnMouseClicked(e -> openPdfModal(attachment));
+                placeholder.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+                    if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                        e.consume();
+                        openPdfModal(attachment);
+                    }
+                });
             } else {
-                placeholder.setOnMouseClicked(e -> openGenericFile(attachment));
+                placeholder.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+                    if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                        e.consume();
+                        openGenericFile(attachment);
+                    }
+                });
             }
         }
         return placeholder;
@@ -245,13 +261,24 @@ public class MessageCell extends ListCell<Message> {
         preview.setFitWidth(THUMB_SIZE);
         preview.setFitHeight(THUMB_SIZE);
         preview.setEffect(message.getType() == MessageType.FILE_PLACEHOLDER ? new GaussianBlur(8) : null);
+        preview.setMouseTransparent(true);  // Let clicks pass through to wrapper
+        
         StackPane thumbWrapper = new StackPane(preview);
         thumbWrapper.getStyleClass().add("file-thumbnail");
+        thumbWrapper.setFocusTraversable(false);  // Prevent focus stealing
+        thumbWrapper.setPickOnBounds(true);       // Capture all clicks
+        
         if (message.getType() == MessageType.FILE_PLACEHOLDER) {
             thumbWrapper.getChildren().add(createProgressOverlay(message));
         } else {
             thumbWrapper.getStyleClass().add("interactive-thumb");
-            thumbWrapper.setOnMouseClicked(e -> openPreviewModal(attachment));
+            // Use MOUSE_PRESSED for immediate response
+            thumbWrapper.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+                if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                    e.consume();
+                    openPreviewModal(attachment);
+                }
+            });
         }
         return thumbWrapper;
     }
@@ -261,13 +288,24 @@ public class MessageCell extends ListCell<Message> {
         preview.setPreserveRatio(true);
         preview.setFitWidth(THUMB_SIZE);
         preview.setFitHeight(THUMB_SIZE);
+        preview.setMouseTransparent(true);  // Let clicks pass through to wrapper
+        
         StackPane thumbWrapper = new StackPane(preview);
         thumbWrapper.getStyleClass().add("file-thumbnail");
+        thumbWrapper.setFocusTraversable(false);  // Prevent focus stealing
+        thumbWrapper.setPickOnBounds(true);       // Capture all clicks
+        
         if (message.getType() == MessageType.FILE_PLACEHOLDER) {
             thumbWrapper.getChildren().add(createProgressOverlay(message));
         } else {
             thumbWrapper.getStyleClass().add("interactive-thumb");
-            thumbWrapper.setOnMouseClicked(e -> openPdfModal(attachment));
+            // Use MOUSE_PRESSED for immediate response
+            thumbWrapper.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+                if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                    e.consume();
+                    openPdfModal(attachment);
+                }
+            });
         }
         return thumbWrapper;
     }
