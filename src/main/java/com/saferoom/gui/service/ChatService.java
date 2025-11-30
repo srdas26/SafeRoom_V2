@@ -375,18 +375,23 @@ public class ChatService {
                 public void onTransferCompleted(long fileId) {
                     Platform.runLater(() -> {
                         placeholder.setProgress(1.0);
-                        placeholder.setType(attachment.getTargetType());
+                        // Set the correct type BEFORE persisting
+                        MessageType finalType = attachment.getTargetType();
+                        placeholder.setType(finalType);
                         placeholder.setStatusText("Sent");
+                        
+                        System.out.printf("[ChatService] 📁 File transfer completed: %s (type: %s, outgoing: %s)%n", 
+                            attachment.getFileName(), finalType, placeholder.isOutgoing());
                         
                         // ✅ PERSIST outgoing file message after successful transfer
                         if (persistenceEnabled && messagePersister != null) {
+                            // Verify type is correct before persisting
+                            System.out.printf("[ChatService] 📁 Persisting with type: %s%n", placeholder.getType());
                             messagePersister.persistMessageAsync(placeholder, targetUser, currentUsername)
                                 .exceptionally(error -> {
                                     System.err.println("[ChatService] Failed to persist outgoing file: " + error.getMessage());
                                     return null;
                                 });
-                            System.out.printf("[ChatService] 📁 Outgoing file persisted: %s to %s%n", 
-                                attachment.getFileName(), targetUser);
                         }
                     });
                 }

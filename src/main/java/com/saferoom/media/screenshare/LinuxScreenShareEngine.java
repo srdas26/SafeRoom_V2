@@ -19,7 +19,6 @@ import java.util.logging.Logger;
 /**
  * Linux-specific screen capture engine that uses JavaCV/FFmpeg to grab desktop frames (PipeWire first,
  * X11 as a fallback) and pushes them into a WebRTC {@link CustomVideoSource}.
- * SafeTouch will be adding soon!
  * Pipeline:
  *   FFmpeg (pipewire:/x11grab → YUV420P) → JavaCV Frame/AVFrame → NativeI420Buffer → WebRTC CustomVideoSource
  */

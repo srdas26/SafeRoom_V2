@@ -459,25 +459,17 @@ public class ChatViewController {
                     placeholder.getChildren().add(imageView);
                     placeholder.setStyle("-fx-background-color: transparent; -fx-background-radius: 8; -fx-cursor: hand;");
                     
-                    // Click to open file
-                    final java.nio.file.Path filePath = attachment.getLocalPath();
-                    placeholder.setOnMouseClicked(e -> {
-                        if (filePath != null && java.nio.file.Files.exists(filePath)) {
-                            openFile(filePath);
-                        }
-                    });
+                    // Click to open file - use same logic as MessageCell
+                    final FileAttachment finalAttachment = attachment;
+                    placeholder.setOnMouseClicked(e -> openSharedMediaFile(finalAttachment));
                 } else {
                     // Show file type icon instead
                     FontIcon icon = getFileTypeIcon(attachment.getTargetType());
                     placeholder.getChildren().add(icon);
                     placeholder.setStyle("-fx-background-color: #2a2d31; -fx-background-radius: 8; -fx-cursor: hand;");
                     
-                    final java.nio.file.Path filePath = attachment.getLocalPath();
-                    placeholder.setOnMouseClicked(e -> {
-                        if (filePath != null && java.nio.file.Files.exists(filePath)) {
-                            openFile(filePath);
-                        }
-                    });
+                    final FileAttachment finalAttachment = attachment;
+                    placeholder.setOnMouseClicked(e -> openSharedMediaFile(finalAttachment));
                 }
             }
         }
@@ -522,15 +514,148 @@ public class ChatViewController {
     }
     
     /**
-     * Open file with system default application
+     * Open shared media file - same logic as MessageCell
+     * Opens images in preview modal, PDFs in PDF viewer, others with system app
      */
-    private void openFile(java.nio.file.Path filePath) {
-        try {
-            java.awt.Desktop.getDesktop().open(filePath.toFile());
-        } catch (Exception e) {
-            System.err.println("[ChatView] Failed to open file: " + e.getMessage());
-            showAlert("Error", "Could not open file: " + e.getMessage(), Alert.AlertType.ERROR);
+    private void openSharedMediaFile(FileAttachment attachment) {
+        if (attachment == null || attachment.getLocalPath() == null) {
+            return;
         }
+        
+        java.nio.file.Path filePath = attachment.getLocalPath();
+        if (!java.nio.file.Files.exists(filePath)) {
+            showAlert("File Not Found", "The file no longer exists at: " + filePath, Alert.AlertType.WARNING);
+            return;
+        }
+        
+        MessageType type = attachment.getTargetType();
+        String fileName = attachment.getFileName().toLowerCase();
+        
+        // Image - open in preview modal
+        if (type == MessageType.IMAGE) {
+            openImagePreviewModal(attachment);
+        }
+        // PDF - open in PDF viewer modal
+        else if (type == MessageType.DOCUMENT && fileName.endsWith(".pdf")) {
+            openPdfViewerModal(attachment);
+        }
+        // Video - open with system player (in background thread)
+        else if (type == MessageType.VIDEO) {
+            openWithSystemApp(filePath);
+        }
+        // Other files - open with system app (in background thread)
+        else {
+            openWithSystemApp(filePath);
+        }
+    }
+    
+    /**
+     * Open image in a preview modal (like MessageCell does)
+     */
+    private void openImagePreviewModal(FileAttachment attachment) {
+        try {
+            Image fullImage = new Image(attachment.getLocalPath().toUri().toString());
+            
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.setTitle(attachment.getFileName());
+            
+            ImageView imageView = new ImageView(fullImage);
+            imageView.setPreserveRatio(true);
+            imageView.setFitWidth(800);
+            imageView.setFitHeight(600);
+            
+            StackPane root = new StackPane(imageView);
+            root.setStyle("-fx-background-color: #0f111a; -fx-padding: 20;");
+            root.setOnMouseClicked(e -> stage.close());
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            scene.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ESCAPE) {
+                    stage.close();
+                }
+            });
+            
+            stage.setScene(scene);
+            stage.show();
+        } catch (Exception e) {
+            System.err.println("[ChatView] Failed to open image preview: " + e.getMessage());
+            openWithSystemApp(attachment.getLocalPath());
+        }
+    }
+    
+    /**
+     * Open PDF in a viewer modal (like MessageCell does with PDFBox)
+     */
+    private void openPdfViewerModal(FileAttachment attachment) {
+        try {
+            java.nio.file.Path path = attachment.getLocalPath();
+            
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.setTitle(attachment.getFileName());
+            
+            VBox pages = new VBox(12);
+            pages.setStyle("-fx-padding: 16; -fx-background-color: #0f111a;");
+            
+            // Load PDF pages using PDFBox
+            try (org.apache.pdfbox.pdmodel.PDDocument doc = 
+                    org.apache.pdfbox.pdmodel.PDDocument.load(path.toFile())) {
+                
+                org.apache.pdfbox.rendering.PDFRenderer renderer = 
+                    new org.apache.pdfbox.rendering.PDFRenderer(doc);
+                
+                int maxPages = Math.min(doc.getNumberOfPages(), 20); // Limit to 20 pages
+                for (int i = 0; i < maxPages; i++) {
+                    java.awt.image.BufferedImage bimg = renderer.renderImageWithDPI(i, 100);
+                    Image fxImg = javafx.embed.swing.SwingFXUtils.toFXImage(bimg, null);
+                    ImageView iv = new ImageView(fxImg);
+                    iv.setPreserveRatio(true);
+                    iv.setFitWidth(600);
+                    pages.getChildren().add(iv);
+                }
+                
+                if (doc.getNumberOfPages() > 20) {
+                    Label moreLabel = new Label("... and " + (doc.getNumberOfPages() - 20) + " more pages");
+                    moreLabel.setStyle("-fx-text-fill: #94a1b2; -fx-font-size: 14px;");
+                    pages.getChildren().add(moreLabel);
+                }
+            }
+            
+            javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(pages);
+            scroll.setFitToWidth(true);
+            scroll.setStyle("-fx-background: #0f111a; -fx-background-color: #0f111a;");
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(scroll, 650, 800);
+            scene.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ESCAPE) {
+                    stage.close();
+                }
+            });
+            
+            stage.setScene(scene);
+            stage.show();
+        } catch (Exception e) {
+            System.err.println("[ChatView] Failed to open PDF viewer: " + e.getMessage());
+            openWithSystemApp(attachment.getLocalPath());
+        }
+    }
+    
+    /**
+     * Open file with system default application (in background thread to prevent UI freeze)
+     */
+    private void openWithSystemApp(java.nio.file.Path filePath) {
+        // Run in background thread to prevent UI freeze
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                java.awt.Desktop.getDesktop().open(filePath.toFile());
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    System.err.println("[ChatView] Failed to open file: " + e.getMessage());
+                    showAlert("Error", "Could not open file: " + e.getMessage(), Alert.AlertType.ERROR);
+                });
+            }
+        });
     }
     
     /**
