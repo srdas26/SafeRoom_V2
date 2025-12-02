@@ -254,13 +254,17 @@ public class MessageCell extends ListCell<Message> {
         return overlay;
     }
 
+    // Cached blur effect - reuse instead of creating new instance each time
+    private static final GaussianBlur PLACEHOLDER_BLUR = new GaussianBlur(8);
+    
     private Node buildImagePreview(Message message, FileAttachment attachment) {
         Image image = attachment.getThumbnail();
         ImageView preview = new ImageView(image);
         preview.setPreserveRatio(true);
         preview.setFitWidth(THUMB_SIZE);
         preview.setFitHeight(THUMB_SIZE);
-        preview.setEffect(message.getType() == MessageType.FILE_PLACEHOLDER ? new GaussianBlur(8) : null);
+        // PERFORMANCE: Use cached blur effect instead of creating new instance
+        preview.setEffect(message.getType() == MessageType.FILE_PLACEHOLDER ? PLACEHOLDER_BLUR : null);
         preview.setMouseTransparent(true);  // Let clicks pass through to wrapper
         
         StackPane thumbWrapper = new StackPane(preview);

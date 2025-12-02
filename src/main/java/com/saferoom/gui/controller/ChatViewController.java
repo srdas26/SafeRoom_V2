@@ -737,7 +737,8 @@ public class ChatViewController {
         item.setPrefSize(120, 120);
         item.setMinSize(120, 120);
         item.setMaxSize(120, 120);
-        item.setStyle("-fx-background-color: #1a1d21; -fx-background-radius: 8; -fx-cursor: hand;");
+        // Base style set via CSS class for better performance
+        item.getStyleClass().add("media-grid-item-base");
         
         // CRITICAL: Prevent focus stealing on first click
         item.setFocusTraversable(false);
@@ -783,13 +784,9 @@ public class ChatViewController {
             item.getChildren().add(content);
         }
         
-        // Hover effect
-        item.setOnMouseEntered(e -> {
-            item.setStyle("-fx-background-color: #2a2d31; -fx-background-radius: 8; -fx-cursor: hand;");
-        });
-        item.setOnMouseExited(e -> {
-            item.setStyle("-fx-background-color: #1a1d21; -fx-background-radius: 8; -fx-cursor: hand;");
-        });
+        // Hover effect - use pseudoclass instead of inline style for better performance
+        // CSS handles :hover state automatically, no need for Java handlers
+        item.getStyleClass().add("media-grid-item");
         
         // Use MOUSE_PRESSED instead of MOUSE_CLICKED for immediate response
         // MOUSE_CLICKED fires after MOUSE_RELEASED, which can feel delayed

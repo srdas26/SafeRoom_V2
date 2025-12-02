@@ -389,26 +389,26 @@ public class DashboardController {
     // ============================================
 
     private void setupCardHoverAnimation(VBox card) {
-        DropShadow glowShadow = new DropShadow();
-        glowShadow.setColor(Color.rgb(34, 211, 238, 0.3));
-        glowShadow.setRadius(20);
-        glowShadow.setSpread(0.2);
+        // PERFORMANCE FIX: Removed DropShadow (GPU expensive)
+        // Using CSS :hover pseudo-class instead for border glow effect
+        // ScaleTransition is kept but simplified
+        
+        ScaleTransition scaleUp = new ScaleTransition(Duration.millis(150), card);
+        scaleUp.setToX(1.02);
+        scaleUp.setToY(1.02);
+        scaleUp.setInterpolator(javafx.animation.Interpolator.EASE_OUT);
 
-        ScaleTransition scaleUp = new ScaleTransition(Duration.millis(200), card);
-        scaleUp.setToX(1.03);
-        scaleUp.setToY(1.03);
-
-        ScaleTransition scaleDown = new ScaleTransition(Duration.millis(200), card);
+        ScaleTransition scaleDown = new ScaleTransition(Duration.millis(150), card);
         scaleDown.setToX(1.0);
         scaleDown.setToY(1.0);
+        scaleDown.setInterpolator(javafx.animation.Interpolator.EASE_IN);
 
         card.setOnMouseEntered(event -> {
-            card.setEffect(glowShadow);
+            // No setEffect() - let CSS handle visual changes
             scaleUp.playFromStart();
         });
 
         card.setOnMouseExited(event -> {
-            card.setEffect(null);
             scaleDown.playFromStart();
         });
     }
