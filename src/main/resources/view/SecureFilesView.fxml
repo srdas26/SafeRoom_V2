@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.saferoom.securefiles.controller.SecureFilesController"
+            styleClass="secure-files-root">
+    
+    <!-- Header -->
+    <top>
+        <VBox styleClass="secure-files-header">
+            <HBox alignment="CENTER_LEFT" spacing="15">
+                <FontIcon iconLiteral="fas-lock" iconSize="24" iconColor="#22d3ee" />
+                <Label text="Secure Files" styleClass="page-title" />
+                <Pane HBox.hgrow="ALWAYS" />
+                <Label fx:id="vaultStatsLabel" text="0 files encrypted" styleClass="vault-stats" />
+            </HBox>
+            <padding>
+                <Insets top="20" right="30" bottom="20" left="30" />
+            </padding>
+        </VBox>
+    </top>
+    
+    <!-- Main Content -->
+    <center>
+        <VBox spacing="20" styleClass="secure-files-content">
+            <padding>
+                <Insets top="20" right="30" bottom="20" left="30" />
+            </padding>
+            
+            <!-- Drop Zone -->
+            <VBox fx:id="dropZone" styleClass="drop-zone" alignment="CENTER" spacing="15"
+                  onDragOver="#handleDragOver" onDragDropped="#handleDragDropped" onDragExited="#handleDragExited">
+                <VBox.margin>
+                    <Insets bottom="20" />
+                </VBox.margin>
+                
+                <FontIcon fx:id="dropZoneIcon" iconLiteral="fas-cloud-upload-alt" 
+                          iconSize="64" iconColor="#94a3b8" />
+                
+                <Label fx:id="dropZoneLabel" text="Drag &amp; drop files to encrypt" 
+                       styleClass="drop-zone-label" />
+                
+                <Label text="or click to browse" styleClass="drop-zone-sublabel" />
+                
+                <HBox spacing="15" alignment="CENTER">
+                    <Button fx:id="browseButton" text="Browse Files" 
+                            styleClass="primary-button" onAction="#handleBrowseFiles">
+                        <graphic>
+                            <FontIcon iconLiteral="fas-folder-open" iconSize="14" />
+                        </graphic>
+                    </Button>
+                    
+                    <CheckBox fx:id="compressCheckbox" text="Compress before encryption" 
+                              styleClass="compress-checkbox" selected="false" />
+                </HBox>
+                
+                <VBox.margin>
+                    <Insets top="10" bottom="10" />
+                </VBox.margin>
+            </VBox>
+            
+            <!-- Vault Section -->
+            <VBox spacing="15" VBox.vgrow="ALWAYS">
+                <!-- Vault Header -->
+                <HBox alignment="CENTER_LEFT" spacing="15">
+                    <Label text="Your Encrypted Files" styleClass="section-title" />
+                    <Pane HBox.hgrow="ALWAYS" />
+                    
+                    <Button fx:id="refreshButton" styleClass="icon-button" 
+                            onAction="#handleRefreshVault">
+                        <graphic>
+                            <FontIcon iconLiteral="fas-sync-alt" iconSize="14" />
+                        </graphic>
+                        <tooltip>
+                            <Tooltip text="Refresh vault" />
+                        </tooltip>
+                    </Button>
+                    
+                    <TextField fx:id="searchField" promptText="Search files..." 
+                               styleClass="search-field" prefWidth="200" />
+                </HBox>
+                
+                <!-- Files Grid -->
+                <ScrollPane fx:id="vaultScrollPane" fitToWidth="true" 
+                            styleClass="vault-scroll-pane" VBox.vgrow="ALWAYS">
+                    <FlowPane fx:id="filesGrid" hgap="15" vgap="15" 
+                              styleClass="files-grid" />
+                </ScrollPane>
+                
+                <!-- Empty State -->
+                <VBox fx:id="emptyState" alignment="CENTER" spacing="15" 
+                      styleClass="empty-state" visible="true" managed="true">
+                    <FontIcon iconLiteral="fas-folder-open" iconSize="48" iconColor="#64748b" />
+                    <Label text="No encrypted files yet" styleClass="empty-state-label" />
+                    <Label text="Drop files above to get started" styleClass="empty-state-sublabel" />
+                </VBox>
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>
+

@@ -72,6 +72,10 @@ dependencies {
     
     // Crypto utilities for encryption
     implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
+    
+    // QR Code generation for Secure Files
+    implementation 'com.google.zxing:core:3.5.3'
+    implementation 'com.google.zxing:javase:3.5.3'
 
     // Logging
     implementation files('libs/slf4j-api-1.7.36.jar')

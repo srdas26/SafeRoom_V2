@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.saferoom.securefiles.controller.KeyPopupController"
+      styleClass="key-popup-root" spacing="20" alignment="CENTER">
+    
+    <padding>
+        <Insets top="30" right="30" bottom="30" left="30" />
+    </padding>
+    
+    <!-- Header -->
+    <VBox alignment="CENTER" spacing="10">
+        <FontIcon iconLiteral="fas-key" iconSize="48" iconColor="#22d3ee" />
+        <Label text="Encryption Key Generated" styleClass="popup-title" />
+        <Label text="Save this key securely - you'll need it to decrypt the file" 
+               styleClass="popup-subtitle" wrapText="true" textAlignment="CENTER" />
+    </VBox>
+    
+    <!-- Key Display -->
+    <VBox spacing="10" styleClass="key-display-container">
+        <Label text="Encryption Key:" styleClass="key-label" />
+        
+        <HBox spacing="10" alignment="CENTER_LEFT" styleClass="key-box">
+            <TextArea fx:id="keyTextArea" editable="false" wrapText="true" 
+                      prefRowCount="3" HBox.hgrow="ALWAYS" styleClass="key-textarea" />
+            
+            <Button fx:id="copyKeyButton" styleClass="icon-button-large" 
+                    onAction="#handleCopyKey">
+                <graphic>
+                    <FontIcon iconLiteral="fas-copy" iconSize="18" />
+                </graphic>
+                <tooltip>
+                    <Tooltip text="Copy to clipboard" />
+                </tooltip>
+            </Button>
+        </HBox>
+    </VBox>
+    
+    <!-- QR Code -->
+    <VBox alignment="CENTER" spacing="10" styleClass="qr-container">
+        <Label text="QR Code:" styleClass="key-label" />
+        <StackPane fx:id="qrCodeContainer" styleClass="qr-code-box" 
+                   prefWidth="200" prefHeight="200">
+            <ImageView fx:id="qrCodeImage" fitWidth="180" fitHeight="180" 
+                       preserveRatio="true" />
+        </StackPane>
+        <Label text="Scan with mobile device" styleClass="qr-sublabel" />
+    </VBox>
+    
+    <!-- File Info -->
+    <VBox spacing="8" styleClass="file-info-container">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <FontIcon iconLiteral="fas-file" iconSize="14" iconColor="#94a3b8" />
+            <Label text="File:" styleClass="info-label" />
+            <Label fx:id="fileNameLabel" text="document.pdf.enc" styleClass="info-value" />
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <FontIcon iconLiteral="fas-hdd" iconSize="14" iconColor="#94a3b8" />
+            <Label text="Size:" styleClass="info-label" />
+            <Label fx:id="fileSizeLabel" text="2.5 MB" styleClass="info-value" />
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <FontIcon iconLiteral="fas-clock" iconSize="14" iconColor="#94a3b8" />
+            <Label text="Encrypted:" styleClass="info-label" />
+            <Label fx:id="dateLabel" text="Just now" styleClass="info-value" />
+        </HBox>
+    </VBox>
+    
+    <!-- Actions -->
+    <HBox spacing="15" alignment="CENTER">
+        <Button fx:id="shareButton" text="Share Encrypted File" 
+                styleClass="primary-button" onAction="#handleShareFile">
+            <graphic>
+                <FontIcon iconLiteral="fas-share-alt" iconSize="14" />
+            </graphic>
+        </Button>
+        
+        <Button fx:id="closeButton" text="Done" 
+                styleClass="secondary-button" onAction="#handleClose">
+            <graphic>
+                <FontIcon iconLiteral="fas-check" iconSize="14" />
+            </graphic>
+        </Button>
+    </HBox>
+    
+    <!-- Warning -->
+    <HBox spacing="10" alignment="CENTER" styleClass="warning-box">
+        <FontIcon iconLiteral="fas-exclamation-triangle" iconSize="14" iconColor="#f59e0b" />
+        <Label text="Keep this key safe! Without it, you cannot decrypt the file." 
+               styleClass="warning-label" wrapText="true" />
+    </HBox>
+</VBox>
+

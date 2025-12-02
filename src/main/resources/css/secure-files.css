@@ -1,0 +1,375 @@
+/* ============================================
+   SECURE FILES STYLING
+   ============================================ */
+
+.secure-files-root {
+    -fx-background-color: #0f172a;
+}
+
+.secure-files-header {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 0 0 1 0;
+}
+
+.secure-files-content {
+    -fx-background-color: #0f172a;
+}
+
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.vault-stats {
+    -fx-font-size: 14px;
+    -fx-text-fill: #94a3b8;
+}
+
+/* ============================================
+   DROP ZONE
+   ============================================ */
+
+.drop-zone {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #475569;
+    -fx-border-width: 2;
+    -fx-border-style: dashed;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 60 40;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0, 0, 2);
+}
+
+.drop-zone:hover {
+    -fx-border-color: #64748b;
+    -fx-background-color: #2a3544;
+}
+
+.drop-zone-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.drop-zone-sublabel {
+    -fx-font-size: 14px;
+    -fx-text-fill: #94a3b8;
+}
+
+.compress-checkbox {
+    -fx-text-fill: #94a3b8;
+}
+
+.compress-checkbox .box {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #475569;
+    -fx-border-radius: 4;
+}
+
+.compress-checkbox:selected .box {
+    -fx-background-color: #22d3ee;
+    -fx-border-color: #22d3ee;
+}
+
+.compress-checkbox .mark {
+    -fx-background-color: white;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.primary-button {
+    -fx-background-color: linear-gradient(to bottom, #22d3ee, #06b6d4);
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 20;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.3), 8, 0, 0, 2);
+}
+
+.primary-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #06b6d4, #0891b2);
+    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.5), 12, 0, 0, 3);
+}
+
+.secondary-button {
+    -fx-background-color: #475569;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 10 20;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.secondary-button:hover {
+    -fx-background-color: #64748b;
+}
+
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #94a3b8;
+    -fx-padding: 8;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #22d3ee;
+}
+
+.icon-button-large {
+    -fx-background-color: #1e293b;
+    -fx-padding: 12;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.icon-button-large:hover {
+    -fx-background-color: #334155;
+}
+
+/* ============================================
+   VAULT SECTION
+   ============================================ */
+
+.section-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.search-field {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #64748b;
+    -fx-border-color: #475569;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+}
+
+.search-field:focused {
+    -fx-border-color: #22d3ee;
+}
+
+.vault-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.vault-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.vault-scroll-pane .scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.vault-scroll-pane .scroll-bar .thumb {
+    -fx-background-color: #475569;
+    -fx-background-radius: 4;
+}
+
+.vault-scroll-pane .scroll-bar .thumb:hover {
+    -fx-background-color: #64748b;
+}
+
+.files-grid {
+    -fx-background-color: transparent;
+    -fx-padding: 10;
+}
+
+/* ============================================
+   FILE CARDS
+   ============================================ */
+
+.file-card {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 12;
+    -fx-border-color: #334155;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 6, 0, 0, 2);
+}
+
+.file-card:hover {
+    -fx-border-color: #22d3ee;
+    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.2), 12, 0, 0, 3);
+    -fx-translate-y: -2;
+}
+
+.file-card-name {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-text-alignment: center;
+}
+
+.file-card-size {
+    -fx-font-size: 12px;
+    -fx-text-fill: #94a3b8;
+}
+
+.file-card-date {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748b;
+}
+
+.file-card-action {
+    -fx-background-color: #334155;
+    -fx-text-fill: #94a3b8;
+    -fx-padding: 6;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.file-card-action:hover {
+    -fx-background-color: #475569;
+    -fx-text-fill: #22d3ee;
+}
+
+.file-card-action-danger {
+    -fx-background-color: #334155;
+    -fx-text-fill: #94a3b8;
+    -fx-padding: 6;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.file-card-action-danger:hover {
+    -fx-background-color: #7f1d1d;
+    -fx-text-fill: #ef4444;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.empty-state {
+    -fx-padding: 60;
+}
+
+.empty-state-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #64748b;
+}
+
+.empty-state-sublabel {
+    -fx-font-size: 14px;
+    -fx-text-fill: #475569;
+}
+
+/* ============================================
+   KEY POPUP
+   ============================================ */
+
+.key-popup-root {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 12;
+}
+
+.popup-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.popup-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #94a3b8;
+    -fx-wrap-text: true;
+}
+
+.key-display-container {
+    -fx-background-color: #0f172a;
+    -fx-background-radius: 8;
+    -fx-padding: 15;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.key-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #94a3b8;
+    -fx-text-transform: uppercase;
+}
+
+.key-box {
+    -fx-background-color: #0a0f1a;
+    -fx-background-radius: 6;
+    -fx-padding: 10;
+    -fx-border-color: #475569;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+}
+
+.key-textarea {
+    -fx-background-color: transparent;
+    -fx-text-fill: #22d3ee;
+    -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 11px;
+    -fx-border-color: transparent;
+}
+
+.key-textarea .content {
+    -fx-background-color: transparent;
+}
+
+.qr-container {
+    -fx-padding: 10;
+}
+
+.qr-code-box {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0, 0, 2);
+}
+
+.qr-sublabel {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748b;
+}
+
+.file-info-container {
+    -fx-background-color: #0f172a;
+    -fx-background-radius: 8;
+    -fx-padding: 15;
+}
+
+.info-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #94a3b8;
+}
+
+.info-value {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.warning-box {
+    -fx-background-color: rgba(245, 158, 11, 0.1);
+    -fx-background-radius: 6;
+    -fx-padding: 10;
+    -fx-border-color: #f59e0b;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+}
+
+.warning-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #fbbf24;
+}
+
