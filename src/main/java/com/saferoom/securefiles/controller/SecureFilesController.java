@@ -629,7 +629,22 @@ public class SecureFilesController {
                     .thenAccept(result -> {
                         Platform.runLater(() -> {
                             if (result.success) {
-                                showInfo("Decryption Successful", "File saved to: " + result.decryptedFilePath);
+                                // 1. Delete encrypted file from vault (DB + disk)
+                                secureFilesService.deleteFileAsync(file.id)
+                                    .thenAccept(deleted -> {
+                                        Platform.runLater(() -> {
+                                            if (deleted) {
+                                                System.out.println("[SecureFiles] ✅ Encrypted file removed from vault after decrypt");
+                                            }
+                                            // 2. Refresh the file list
+                                            loadAllFiles();
+                                        });
+                                    });
+                                
+                                // 3. Open the decrypted file automatically
+                                openDecryptedFile(result.decryptedFilePath);
+                                
+                                showInfo("Decryption Successful", "File decrypted and opened:\n" + result.decryptedFilePath);
                             } else {
                                 showError("Decryption Failed", result.message);
                             }
@@ -637,6 +652,32 @@ public class SecureFilesController {
                     });
             }
         });
+    }
+    
+    /**
+     * Open a decrypted file with system default application
+     */
+    private void openDecryptedFile(String filePath) {
+        if (filePath == null) return;
+        
+        try {
+            Path path = Path.of(filePath);
+            if (Files.exists(path)) {
+                String os = System.getProperty("os.name").toLowerCase();
+                ProcessBuilder pb;
+                if (os.contains("linux")) {
+                    pb = new ProcessBuilder("xdg-open", path.toString());
+                } else if (os.contains("mac")) {
+                    pb = new ProcessBuilder("open", path.toString());
+                } else {
+                    pb = new ProcessBuilder("cmd", "/c", "start", "", path.toString());
+                }
+                pb.start();
+                System.out.println("[SecureFiles] 📂 Opened decrypted file: " + path.getFileName());
+            }
+        } catch (Exception e) {
+            System.err.println("[SecureFiles] Failed to open decrypted file: " + e.getMessage());
+        }
     }
     
     private void handleDeleteFile(SecureFileRecord file) {
